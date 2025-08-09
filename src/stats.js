@@ -64,10 +64,10 @@ router.get('/messages-per-hour', async (req, res) => {
             orderBy: { created_at: 'asc' }
         });
 
-        // Pre-fill `uniqueCounts` with zeros for all hours
+        // Pre-fill `uniqueCounts` with zeros for all hours, including the current hour
         const uniqueCounts = Object.fromEntries(
             Array.from({ length: hours }, (_, i) => {
-                const hourTime = new Date(now.getTime() - (hours - i) * 60 * 60 * 1000);
+                const hourTime = new Date(now.getTime() - (hours - 1 - i) * 60 * 60 * 1000);
                 const hourString = hourTime.toISOString().slice(0, 13); // YYYY-MM-DD HH
                 return [hourString, 0];
             })
@@ -76,7 +76,7 @@ router.get('/messages-per-hour', async (req, res) => {
         // Populate actual message counts
         messages.forEach(({ created_at }) => {
             const hourString = created_at.toISOString().slice(0, 13); // YYYY-MM-DD HH
-            uniqueCounts[hourString]++;
+            uniqueCounts[hourString] = (uniqueCounts[hourString] ?? 0) + 1;
         });
 
         // Convert to final result format
