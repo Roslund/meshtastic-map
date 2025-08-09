@@ -68,14 +68,14 @@ router.get('/messages-per-hour', async (req, res) => {
         const uniqueCounts = Object.fromEntries(
             Array.from({ length: hours }, (_, i) => {
                 const hourTime = new Date(now.getTime() - (hours - 1 - i) * 60 * 60 * 1000);
-                const hourString = hourTime.toISOString().slice(0, 13); // YYYY-MM-DD HH
+                const hourString = hourTime.toISOString().slice(0, 13) + ":00:00.000Z"; // zero out the minutes and seconds
                 return [hourString, 0];
             })
         );
 
         // Populate actual message counts
         messages.forEach(({ created_at }) => {
-            const hourString = created_at.toISOString().slice(0, 13); // YYYY-MM-DD HH
+            const hourString = created_at.toISOString().slice(0, 13) + ":00:00.000Z"; // zero out the minutes and seconds
             uniqueCounts[hourString] = (uniqueCounts[hourString] ?? 0) + 1;
         });
 
