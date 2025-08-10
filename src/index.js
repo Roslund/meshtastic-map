@@ -628,6 +628,9 @@ app.get('/api/v1/traceroutes', async (req, res) => {
                 const hopTo = pathNodes[i + 1];
                 const snr = typeof (pathSnrs && pathSnrs[i]) === 'number' ? pathSnrs[i] : null;
 
+                // Skip edges without SNR data
+                if (snr === null) continue;
+
                 const key = edgeKey(hopFrom, hopTo);
                 const existing = edges.get(key);
                 if (!existing) {
