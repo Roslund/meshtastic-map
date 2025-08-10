@@ -1315,6 +1315,28 @@
                                 </select>
                             </div>
 
+                            <!-- configTraceroutesMaxAgeInSeconds -->
+                            <div class="p-2">
+                                <label class="block text-sm font-medium text-gray-900">Traceroutes Max Age</label>
+                                <div class="text-xs text-gray-600 mb-2">Traceroute edges older than this time are hidden. Reload to update map.</div>
+                                <select v-model="configTraceroutesMaxAgeInSeconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option :value="null">Show All</option>
+                                    <option value="900">15 minutes</option>
+                                    <option value="1800">30 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                    <option value="10800">3 hours</option>
+                                    <option value="21600">6 hours</option>
+                                    <option value="43200">12 hours</option>
+                                    <option value="86400">24 hours</option>
+                                    <option value="172800">2 days</option>
+                                    <option value="259200">3 days</option>
+                                    <option value="345600">4 days</option>
+                                    <option value="432000">5 days</option>
+                                    <option value="518400">6 days</option>
+                                    <option value="604800">7 days</option>
+                                </select>
+                            </div>
+
                             <!-- configNeighboursMaxDistanceInMeters -->
                             <div class="p-2">
                                 <label class="block text-sm font-medium text-gray-900">Neighbours Max Distance (meters)</label>
@@ -1613,6 +1635,20 @@
         }
     }
 
+    function getConfigTraceroutesMaxAgeInSeconds() {
+        const value = localStorage.getItem("config_traceroutes_max_age_in_seconds");
+        // default to 3 days if unset, to limit payloads
+        return value != null ? parseInt(value) : 259200;
+    }
+
+    function setConfigTraceroutesMaxAgeInSeconds(value) {
+        if(value != null){
+            return localStorage.setItem("config_traceroutes_max_age_in_seconds", value);
+        } else {
+            return localStorage.removeItem("config_traceroutes_max_age_in_seconds");
+        }
+    }
+
     function getConfigNeighboursMaxDistanceInMeters() {
         const value = localStorage.getItem("config_neighbours_max_distance_in_meters");
         return value != null ? parseInt(value) : null;
@@ -1649,6 +1685,7 @@
                 configNodesDisconnectedAgeInSeconds: window.getConfigNodesDisconnectedAgeInSeconds(),
                 configNodesOfflineAgeInSeconds: window.getConfigNodesOfflineAgeInSeconds(),
                 configWaypointsMaxAgeInSeconds: window.getConfigWaypointsMaxAgeInSeconds(),
+                configTraceroutesMaxAgeInSeconds: window.getConfigTraceroutesMaxAgeInSeconds(),
                 configNeighboursMaxDistanceInMeters: window.getConfigNeighboursMaxDistanceInMeters(),
                 configZoomLevelGoToNode: window.getConfigZoomLevelGoToNode(),
                 configAutoUpdatePositionInUrl: window.getConfigAutoUpdatePositionInUrl(),
@@ -1685,6 +1722,7 @@
                 selectedNodePositionHistoryPolyLines: [],
 
                 selectedTraceRoute: null,
+                tracerouteEdges: [],
 
                 selectedNodeToShowNeighbours: null,
                 selectedNodeToShowNeighboursType: null,
@@ -2560,6 +2598,9 @@
             configWaypointsMaxAgeInSeconds() {
                 window.setConfigWaypointsMaxAgeInSeconds(this.configWaypointsMaxAgeInSeconds);
             },
+            configTraceroutesMaxAgeInSeconds() {
+                window.setConfigTraceroutesMaxAgeInSeconds(this.configTraceroutesMaxAgeInSeconds);
+            },
             configNeighboursMaxDistanceInMeters() {
                 window.setConfigNeighboursMaxDistanceInMeters(this.configNeighboursMaxDistanceInMeters);
             },
@@ -2595,6 +2636,7 @@
     var nodeMarkers = {};
     var selectedNodeOutlineCircle = null;
     var waypoints = [];
+    var tracerouteEdgesCache = [];
 
     // set map bounds to be a little more than full size to prevent panning off screen
     var bounds = [
@@ -2669,6 +2711,7 @@
     var nodesBackboneLayerGroup = new L.LayerGroup();
     var waypointsLayerGroup = new L.LayerGroup();
     var nodePositionHistoryLayerGroup = new L.LayerGroup();
+    var traceroutesLayerGroup = new L.LayerGroup();
 
     // create icons
     var iconMqttConnected = L.divIcon({
@@ -2736,6 +2779,7 @@
             "Backbone Connection": backboneNeighboursLayerGroup,
             "Waypoints": waypointsLayerGroup,
             "Position History": nodePositionHistoryLayerGroup,
+            "Traceroutes": traceroutesLayerGroup,
         },
     }, {
         // make the "Nodes" group exclusive (use radio inputs instead of checkbox)
@@ -2761,6 +2805,9 @@
     }
     if(enabledOverlayLayers.includes("Position History")){
         nodePositionHistoryLayerGroup.addTo(map);
+    }
+    if(enabledOverlayLayers.includes("Traceroutes")){
+        traceroutesLayerGroup.addTo(map);
     }
 
     // update config when map overlay is added
@@ -2913,6 +2960,10 @@
         waypointsLayerGroup.clearLayers();
     }
 
+    function clearAllTraceroutes() {
+        traceroutesLayerGroup.clearLayers();
+    }
+
     function closeAllPopups() {
         map.eachLayer(function(layer) {
             if(layer.options.pane === "popupPane"){
@@ -3048,6 +3099,47 @@
         // show overlay for node neighbours
         window._onShowNodeNeighboursWeHeardClick(node);
 
+        // Overlay ALL traceroute edges that terminate at this node (edge.to == node.node_id)
+        for (const edge of tracerouteEdgesCache) {
+            if (String(edge.to) !== String(node.node_id)) continue;
+
+            const fromMarker = findNodeMarkerById(edge.from);
+            if (!fromMarker) continue;
+
+            const snrDb = (typeof edge.snr === 'number') ? (edge.snr === -128 ? null : (Number(edge.snr) / 4)) : null;
+            const trColour = snrDb != null ? getColourForSnr(snrDb) : '#6b7280';
+
+            const trTooltip = (() => {
+                const fromNode = findNodeById(edge.from);
+                const toNode = findNodeById(node.node_id);
+                const distanceInMeters = fromMarker.getLatLng().distanceTo(nodeMarker.getLatLng()).toFixed(2);
+                let distance = `${distanceInMeters} meters`;
+                if (distanceInMeters >= 1000) {
+                    const km = (distanceInMeters / 1000).toFixed(2);
+                    distance = `${km} kilometers`;
+                }
+                const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
+                return `<b>Traceroute hop</b>`
+                    + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
+                    + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
+                    + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
+                    + `<br/>Distance: ${distance}`
+                    + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
+                    + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
+            })();
+
+            L.polyline([
+                fromMarker.getLatLng(),
+                nodeMarker.getLatLng(),
+            ], {
+                color: trColour,
+                opacity: 0.9,
+            }).arrowheads({ size: '10px', fill: true, offsets: { start: '25px', end: '25px' } })
+            .addTo(nodeNeighboursLayerGroup)
+            .bindTooltip(trTooltip, { sticky: true, opacity: 1, interactive: true })
+            .bindPopup(trTooltip);
+        }
+
         // ensure we have neighbours to show
         const neighbours = node.neighbours ?? [];
         if(neighbours.length === 0){
@@ -3171,6 +3263,47 @@
 
         }
 
+        // Overlay ALL traceroute edges that originate from this node (edge.from == node.node_id)
+        for (const edge of tracerouteEdgesCache) {
+            if (String(edge.from) !== String(node.node_id)) continue;
+
+            const toMarker = findNodeMarkerById(edge.to);
+            if (!toMarker) continue;
+
+            const snrDb = (typeof edge.snr === 'number') ? (edge.snr === -128 ? null : (Number(edge.snr) / 4)) : null;
+            const trColour = snrDb != null ? getColourForSnr(snrDb) : '#6b7280';
+
+            const trTooltip2 = (() => {
+                const fromNode = findNodeById(node.node_id);
+                const toNode = findNodeById(edge.to);
+                const distanceInMeters = nodeMarker.getLatLng().distanceTo(toMarker.getLatLng()).toFixed(2);
+                let distance = `${distanceInMeters} meters`;
+                if (distanceInMeters >= 1000) {
+                    const km = (distanceInMeters / 1000).toFixed(2);
+                    distance = `${km} kilometers`;
+                }
+                const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
+                return `<b>Traceroute hop</b>`
+                    + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
+                    + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
+                    + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
+                    + `<br/>Distance: ${distance}`
+                    + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
+                    + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
+            })();
+
+            L.polyline([
+                nodeMarker.getLatLng(),
+                toMarker.getLatLng(),
+            ], {
+                color: trColour,
+                opacity: 0.9,
+            }).arrowheads({ size: '10px', fill: true, offsets: { start: '25px', end: '25px' } })
+            .addTo(nodeNeighboursLayerGroup)
+            .bindTooltip(trTooltip2, { sticky: true, opacity: 1, interactive: true })
+            .bindPopup(trTooltip2);
+        }
+
         // ensure we have neighbours to show
         if(neighbourNodeInfos.length === 0){
             return;
@@ -3257,6 +3390,7 @@
         clearAllNodes();
         clearAllNeighbours();
         clearAllWaypoints();
+        clearAllTraceroutes();
         clearNodeOutline();
         cleanUpNodeNeighbours();
     }
@@ -3624,6 +3758,66 @@
 
     }
 
+    function onTracerouteEdgesUpdated(edges) {
+
+        traceroutesLayerGroup.clearLayers();
+
+        tracerouteEdgesCache = edges;
+
+        for (const edge of edges) {
+            // Convert SNR for traceroutes: snr/4 dB; -128 means unknown
+            const snrDb = (typeof edge.snr === 'number')
+                ? (edge.snr === -128 ? null : (Number(edge.snr) / 4))
+                : null;
+            const fromNode = findNodeById(edge.from);
+            const toNode = findNodeById(edge.to);
+            if (!fromNode || !toNode) continue;
+
+            const fromMarker = findNodeMarkerById(edge.from);
+            const toMarker = findNodeMarkerById(edge.to);
+            if (!fromMarker || !toMarker) continue;
+
+            const distanceInMeters = fromMarker.getLatLng().distanceTo(toMarker.getLatLng()).toFixed(2);
+
+            let distance = `${distanceInMeters} meters`;
+            if (distanceInMeters >= 1000) {
+                const km = (distanceInMeters / 1000).toFixed(2);
+                distance = `${km} kilometers`;
+            }
+
+            const colour = '#f97316';
+
+            const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
+
+            const tooltip = `Traceroute hop`
+                + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
+                + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
+                + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
+                + `<br/>Distance: ${distance}`
+                + (edge.updated_at ? `<br/>Updated: ${moment(new Date(edge.updated_at)).fromNow()}` : '')
+                + (edge.channel_id ? `<br/>Channel: ${edge.channel_id}` : '')
+                + `<br/><br/>Terrain images from <a href="http://www.heywhatsthat.com" target="_blank">HeyWhatsThat.com</a>`
+                + `<br/><a href="${terrainImageUrl}" target="_blank"><img src="${terrainImageUrl}" width="100%"></a>`;
+
+            const line = L.polyline([
+                fromMarker.getLatLng(),
+                toMarker.getLatLng(),
+            ], {
+                color: colour,
+                opacity: 0.9,
+            }).addTo(traceroutesLayerGroup);
+
+            line.bindTooltip(tooltip, {
+                sticky: true,
+                opacity: 1,
+                interactive: true,
+            }).bindPopup(tooltip)
+            .on('click', function(event) {
+                event.target.closeTooltip();
+            });
+        }
+    }
+
     function onPositionHistoryUpdated(updatedPositionHistories) {
 
         let positionHistoryLinesCords = [];
@@ -3754,6 +3948,17 @@
         // fetch waypoints (after awaiting nodes, so we can use nodes cache in waypoint tooltips)
         await window.axios.get('/api/v1/waypoints').then(async (response) => {
             onWaypointsUpdated(response.data.waypoints);
+        });
+
+        // fetch traceroute edges
+        const traceroutesMaxAgeSec = getConfigTraceroutesMaxAgeInSeconds();
+        const timeFrom = traceroutesMaxAgeSec ? (Date.now() - traceroutesMaxAgeSec * 1000) : undefined;
+        const params = new URLSearchParams();
+        if (timeFrom) params.set('time_from', timeFrom);
+        await window.axios.get(`/api/v1/traceroutes?${params.toString()}`).then(async (response) => {
+            onTracerouteEdgesUpdated(response.data.traceroute_edges ?? []);
+        }).catch(() => {
+            onTracerouteEdgesUpdated([]);
         });
 
     }
