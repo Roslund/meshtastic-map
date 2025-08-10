@@ -616,52 +616,66 @@ app.get('/api/v1/traceroutes', async (req, res) => {
             return trace;
         });
 
-        // Build edges from the forward (towards) path using snr_towards
-        // The forward path is: to (initiator) → route[0] → route[1] → ... → from (responder?)
-        // snr_towards holds SNR per hop along that path.
-        // We only care about neighbor-like edges between consecutive hops with their SNR and updated_at.
-        const edgeKey = (a, b) => `${String(a)}->${String(b)}`; // directional; map layer can choose how to render
+        // Build edges from both forward (towards) and reverse (back) paths.
+        // Forward path: to → route[] → from, using snr_towards
+        // Reverse path: from → route_back[] → to, using snr_back
+        const edgeKey = (a, b) => `${String(a)}->${String(b)}`;
         const edges = new Map();
 
-        for (const tr of normalized) {
-            const path = [];
-            if (tr.to != null) path.push(Number(tr.to));
-            if (Array.isArray(tr.route)) {
-                for (const hop of tr.route) {
-                    if (hop != null) path.push(Number(hop));
-                }
-            }
-            if (tr.from != null) path.push(Number(tr.from));
+        function upsertEdgesFromPath(trace, pathNodes, pathSnrs) {
+            for (let i = 0; i < pathNodes.length - 1; i++) {
+                const hopFrom = pathNodes[i];
+                const hopTo = pathNodes[i + 1];
+                const snr = typeof (pathSnrs && pathSnrs[i]) === 'number' ? pathSnrs[i] : null;
 
-            const snrs = Array.isArray(tr.snr_towards) ? tr.snr_towards : [];
-
-            for (let i = 0; i < path.length - 1; i++) {
-                const fromNode = path[i];
-                const toNode = path[i + 1];
-                // snr_towards aligns to hops; guard if missing
-                const snr = typeof snrs[i] === 'number' ? snrs[i] : null;
-
-                const key = edgeKey(fromNode, toNode);
+                const key = edgeKey(hopFrom, hopTo);
                 const existing = edges.get(key);
                 if (!existing) {
                     edges.set(key, {
-                        from: fromNode,
-                        to: toNode,
+                        from: hopFrom,
+                        to: hopTo,
                         snr: snr,
-                        updated_at: tr.updated_at,
-                        channel_id: tr.channel_id ?? null,
-                        gateway_id: tr.gateway_id ?? null,
+                        updated_at: trace.updated_at,
+                        channel_id: trace.channel_id ?? null,
+                        gateway_id: trace.gateway_id ?? null,
+                        traceroute_from: trace.from,  // original initiator
+                        traceroute_to: trace.to,      // original target
                     });
-                } else {
-                    // Deduplicate by keeping the most recent updated_at
-                    if (new Date(tr.updated_at) > new Date(existing.updated_at)) {
-                        existing.snr = snr;
-                        existing.updated_at = tr.updated_at;
-                        existing.channel_id = tr.channel_id ?? existing.channel_id;
-                        existing.gateway_id = tr.gateway_id ?? existing.gateway_id;
-                    }
+                } else if (new Date(trace.updated_at) > new Date(existing.updated_at)) {
+                    existing.snr = snr;
+                    existing.updated_at = trace.updated_at;
+                    existing.channel_id = trace.channel_id ?? existing.channel_id;
+                    existing.gateway_id = trace.gateway_id ?? existing.gateway_id;
+                    existing.traceroute_from = trace.from;
+                    existing.traceroute_to = trace.to;
                 }
             }
+        }
+
+        for (const tr of normalized) {
+            // Forward path
+            const forwardPath = [];
+            if (tr.to != null) forwardPath.push(Number(tr.to));
+            if (Array.isArray(tr.route)) {
+                for (const hop of tr.route) {
+                    if (hop != null) forwardPath.push(Number(hop));
+                }
+            }
+            if (tr.from != null) forwardPath.push(Number(tr.from));
+            const forwardSnrs = Array.isArray(tr.snr_towards) ? tr.snr_towards : [];
+            upsertEdgesFromPath(tr, forwardPath, forwardSnrs);
+
+            // Reverse path
+            const reversePath = [];
+            if (tr.from != null) reversePath.push(Number(tr.from));
+            if (Array.isArray(tr.route_back)) {
+                for (const hop of tr.route_back) {
+                    if (hop != null) reversePath.push(Number(hop));
+                }
+            }
+            if (tr.to != null) reversePath.push(Number(tr.to));
+            const reverseSnrs = Array.isArray(tr.snr_back) ? tr.snr_back : [];
+            upsertEdgesFromPath(tr, reversePath, reverseSnrs);
         }
 
         res.json({
