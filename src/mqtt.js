@@ -947,6 +947,7 @@ client.on("message", async (topic, message) => {
                         role: user.role,
                         is_unmessagable: user.isUnmessagable,
                         ok_to_mqtt: isOkToMqtt,
+                        max_hops: envelope.packet.hopStart,
 
                         firmware_version: '<2.5.0',
                         ...(user.publicKey != '' && {
@@ -965,6 +966,7 @@ client.on("message", async (topic, message) => {
                         role: user.role,
                         is_unmessagable: user.isUnmessagable,
                         ok_to_mqtt: isOkToMqtt,
+                        max_hops: envelope.packet.hopStart,
 
                         firmware_version: '<2.5.0',
                         ...(user.publicKey != '' && {

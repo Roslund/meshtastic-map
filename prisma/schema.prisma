@@ -54,7 +54,8 @@ model Node {
   mqtt_connection_state_updated_at DateTime?
 
   ok_to_mqtt  Boolean?
-  is_backbone  Boolean?
+  is_backbone Boolean?
+  max_hops    Int?
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
