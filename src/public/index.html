@@ -3119,11 +3119,15 @@
                     distance = `${km} kilometers`;
                 }
                 const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
+                const targetNode = edge.traceroute_from ? findNodeById(edge.traceroute_from) : null;
+                const initiatorNode = edge.traceroute_to ? findNodeById(edge.traceroute_to) : null;
                 return `<b>Traceroute hop</b>`
                     + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
                     + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
                     + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
                     + `<br/>Distance: ${distance}`
+                    + (initiatorNode ? `<br/>Traceroute from: <b>[${escapeString(initiatorNode.short_name)}] ${escapeString(initiatorNode.long_name)}</b>` : '')
+                    + (targetNode ? `<br/>Traceroute to: <b>[${escapeString(targetNode.short_name)}] ${escapeString(targetNode.long_name)}</b>` : '')
                     + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
                     + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
             })();
@@ -3283,11 +3287,15 @@
                     distance = `${km} kilometers`;
                 }
                 const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
+                const targetNode = edge.traceroute_from ? findNodeById(edge.traceroute_from) : null;
+                const initiatorNode = edge.traceroute_to ? findNodeById(edge.traceroute_to) : null;
                 return `<b>Traceroute hop</b>`
                     + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
                     + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
                     + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
                     + `<br/>Distance: ${distance}`
+                    + (initiatorNode ? `<br/>Traceroute from: <b>[${escapeString(initiatorNode.short_name)}] ${escapeString(initiatorNode.long_name)}</b>` : '')
+                    + (targetNode ? `<br/>Traceroute to: <b>[${escapeString(targetNode.short_name)}] ${escapeString(targetNode.long_name)}</b>` : '')
                     + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
                     + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
             })();
@@ -3789,11 +3797,17 @@
 
             const terrainImageUrl = getTerrainProfileImage(fromNode, toNode);
 
-            const tooltip = `Traceroute hop`
+            // This is backwards. It's because the traceroute packet is sent from the target node.
+            const targetNode = edge.traceroute_from ? findNodeById(edge.traceroute_from) : null;
+            const initiatorNode = edge.traceroute_to ? findNodeById(edge.traceroute_to) : null;
+            
+            const tooltip = `<b>Traceroute hop</b>`
                 + `<br/>from <b>[${escapeString(fromNode.short_name)}] ${escapeString(fromNode.long_name)}</b>`
                 + ` to <b>[${escapeString(toNode.short_name)}] ${escapeString(toNode.long_name)}</b>`
                 + `<br/>SNR: ${snrDb != null ? snrDb + 'dB' : '?'}`
                 + `<br/>Distance: ${distance}`
+                + (initiatorNode ? `<br/>Traceroute from: <b>[${escapeString(initiatorNode.short_name)}] ${escapeString(initiatorNode.long_name)}</b>` : '')
+                + (targetNode ? `<br/>Traceroute to: <b>[${escapeString(targetNode.short_name)}] ${escapeString(targetNode.long_name)}</b>` : '')
                 + (edge.updated_at ? `<br/>Updated: ${moment(new Date(edge.updated_at)).fromNow()}` : '')
                 + (edge.channel_id ? `<br/>Channel: ${edge.channel_id}` : '')
                 + `<br/><br/>Terrain images from <a href="http://www.heywhatsthat.com" target="_blank">HeyWhatsThat.com</a>`
