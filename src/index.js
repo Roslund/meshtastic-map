@@ -147,6 +147,14 @@ app.get('/api', async (req, res) => {
             "description": "Trace routes for a meshtastic node",
         },
         {
+            "path": "/api/v1/traceroutes",
+            "description": "Recent traceroute edges across all nodes",
+            "params": {
+                "time_from": "Only include traceroutes updated after this unix timestamp (milliseconds)",
+                "time_to": "Only include traceroutes updated before this unix timestamp (milliseconds)"
+            }
+        },
+        {
             "path": "/api/v1/nodes/:nodeId/position-history",
             "description": "Position history for a meshtastic node",
             "params": {
@@ -559,6 +567,108 @@ app.get('/api/v1/nodes/:nodeId/traceroutes', async (req, res) => {
         });
 
     } catch(err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Something went wrong, try again later.",
+        });
+    }
+});
+
+// Aggregated recent traceroute edges (global), filtered by updated_at
+// Returns deduplicated edges with the latest SNR and timestamp.
+// GET /api/v1/nodes/traceroutes?time_from=...&time_to=...
+app.get('/api/v1/traceroutes', async (req, res) => {
+    try {
+
+        const timeFrom = req.query.time_from ? parseInt(req.query.time_from) : undefined;
+        const timeTo = req.query.time_to ? parseInt(req.query.time_to) : undefined;
+
+        // Pull recent traceroutes within the time window. We only want replies (want_response=false)
+        // and those that were actually gated to MQTT (gateway_id not null)
+        const traces = await prisma.traceRoute.findMany({
+            where: {
+                want_response: false,
+                gateway_id: { not: null },
+                updated_at: {
+                    gte: timeFrom ? new Date(timeFrom) : undefined,
+                    lte: timeTo ? new Date(timeTo) : undefined,
+                },
+            },
+            orderBy: { id: 'desc' },
+            take: 5000, // cap to keep response bounded; UI can page/adjust time window if needed
+        });
+
+        // Normalize JSON fields that may be strings (depending on driver)
+        const normalized = traces.map((t) => {
+            const trace = { ...t };
+            if (typeof trace.route === 'string') {
+                try { trace.route = JSON.parse(trace.route); } catch(_) {}
+            }
+            if (typeof trace.route_back === 'string') {
+                try { trace.route_back = JSON.parse(trace.route_back); } catch(_) {}
+            }
+            if (typeof trace.snr_towards === 'string') {
+                try { trace.snr_towards = JSON.parse(trace.snr_towards); } catch(_) {}
+            }
+            if (typeof trace.snr_back === 'string') {
+                try { trace.snr_back = JSON.parse(trace.snr_back); } catch(_) {}
+            }
+            return trace;
+        });
+
+        // Build edges from the forward (towards) path using snr_towards
+        // The forward path is: to (initiator) → route[0] → route[1] → ... → from (responder?)
+        // snr_towards holds SNR per hop along that path.
+        // We only care about neighbor-like edges between consecutive hops with their SNR and updated_at.
+        const edgeKey = (a, b) => `${String(a)}->${String(b)}`; // directional; map layer can choose how to render
+        const edges = new Map();
+
+        for (const tr of normalized) {
+            const path = [];
+            if (tr.to != null) path.push(Number(tr.to));
+            if (Array.isArray(tr.route)) {
+                for (const hop of tr.route) {
+                    if (hop != null) path.push(Number(hop));
+                }
+            }
+            if (tr.from != null) path.push(Number(tr.from));
+
+            const snrs = Array.isArray(tr.snr_towards) ? tr.snr_towards : [];
+
+            for (let i = 0; i < path.length - 1; i++) {
+                const fromNode = path[i];
+                const toNode = path[i + 1];
+                // snr_towards aligns to hops; guard if missing
+                const snr = typeof snrs[i] === 'number' ? snrs[i] : null;
+
+                const key = edgeKey(fromNode, toNode);
+                const existing = edges.get(key);
+                if (!existing) {
+                    edges.set(key, {
+                        from: fromNode,
+                        to: toNode,
+                        snr: snr,
+                        updated_at: tr.updated_at,
+                        channel_id: tr.channel_id ?? null,
+                        gateway_id: tr.gateway_id ?? null,
+                    });
+                } else {
+                    // Deduplicate by keeping the most recent updated_at
+                    if (new Date(tr.updated_at) > new Date(existing.updated_at)) {
+                        existing.snr = snr;
+                        existing.updated_at = tr.updated_at;
+                        existing.channel_id = tr.channel_id ?? existing.channel_id;
+                        existing.gateway_id = tr.gateway_id ?? existing.gateway_id;
+                    }
+                }
+            }
+        }
+
+        res.json({
+            traceroute_edges: Array.from(edges.values()),
+        });
+
+    } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Something went wrong, try again later.",
