@@ -948,6 +948,7 @@ client.on("message", async (topic, message) => {
                         is_unmessagable: user.isUnmessagable,
                         ok_to_mqtt: isOkToMqtt,
                         max_hops: envelope.packet.hopStart,
+                        channel_id: envelope.channelId,
 
                         firmware_version: '<2.5.0',
                         ...(user.publicKey != '' && {
@@ -967,7 +968,8 @@ client.on("message", async (topic, message) => {
                         is_unmessagable: user.isUnmessagable,
                         ok_to_mqtt: isOkToMqtt,
                         max_hops: envelope.packet.hopStart,
-
+                        channel_id: envelope.channelId,
+                        
                         firmware_version: '<2.5.0',
                         ...(user.publicKey != '' && {
                             firmware_version: '>2.5.0',

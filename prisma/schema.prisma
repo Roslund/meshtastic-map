@@ -57,6 +57,8 @@ model Node {
   is_backbone Boolean?
   max_hops    Int?
 
+  channel_id String?
+
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
