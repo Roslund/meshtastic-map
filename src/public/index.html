@@ -55,6 +55,17 @@
             display: none;
         }
 
+        .icon-longfast {
+            background-color: #2563eb;
+            border-radius: 25px;
+            border: 1px solid white;
+        }
+
+        .icon-mediumfast {
+            background-color: #4C83FE; 
+            border-radius: 25px;
+            border: 1px solid white;
+        }
         .icon-mqtt-connected {
             background-color: #2563eb; /* Change to use same color as disconnected // #16a34a; */
             border-radius: 25px;
@@ -2719,6 +2730,16 @@
         iconSize: [16, 16], // increase from 12px to 16px to make hover easier
     });
 
+    var iconLongFast = L.divIcon({
+        className: 'icon-longfast',
+        iconSize: [16, 16], // increase from 12px to 16px to make hover easier
+    });
+    
+    var iconMediumFast = L.divIcon({
+        className: 'icon-mediumfast',
+        iconSize: [16, 16], // increase from 12px to 16px to make hover easier
+    });
+
     var iconMqttDisconnected = L.divIcon({
         className: 'icon-mqtt-disconnected',
         iconSize: [16, 16], // increase from 12px to 16px to make hover easier
@@ -2742,8 +2763,8 @@
         div.style.backgroundColor = 'white';
         div.style.padding = '12px';
         div.innerHTML = `<div style="margin-bottom:6px;"><strong>Legend</strong></div>`
-            + `<div style="display:flex"><div class="icon-mqtt-connected" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> MQTT Connected</div>`
-            + `<div style="display:flex"><div class="icon-mqtt-disconnected" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> MQTT Disconnected</div>`
+            + `<div style="display:flex"><div class="icon-mediumfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Medium Fast</div>`
+            + `<div style="display:flex"><div class="icon-longfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Long Fast</div>`
             + `<div style="display:flex"><div class="icon-offline" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Offline Too Long</div>`;
         return div;
     };
@@ -3480,8 +3501,12 @@
                 longitude += 360;
             }
 
-            // icon based on mqtt connection state
-            var icon = iconMqttDisconnected;
+            // icon based on channel preset
+            var icon = iconLongFast;
+
+            if (node.channel_id == "MediumFast") {
+                icon = iconMediumFast;
+            }
 
             // use offline icon for nodes older than configured node offline age
             if(configNodesOfflineAgeInSeconds){
@@ -3492,10 +3517,11 @@
             }
 
             // determine if node was recently heard uplinking packets to mqtt
-            const nodeHasUplinkedToMqttRecently = hasNodeUplinkedToMqttRecently(node);
-            if(nodeHasUplinkedToMqttRecently){
-                icon = iconMqttConnected;
-            }
+            //const nodeHasUplinkedToMqttRecently = hasNodeUplinkedToMqttRecently(node);
+            //if(nodeHasUplinkedToMqttRecently){
+            //    icon = iconMqttConnected;
+            //}
+
             // To not have overlapping nodes. 
             // Should probbably check if there is allready an other node in the same position before applying jitter.
             var jitter = 0
