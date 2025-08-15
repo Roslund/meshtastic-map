@@ -3534,7 +3534,7 @@
                 icon: icon,
                 tagName: node.node_id,
                 // we want to show online nodes above offline, but without needing to use separate layer groups
-                zIndexOffset: nodeHasUplinkedToMqttRecently ? 1000 : -1000,
+                //zIndexOffset: nodeHasUplinkedToMqttRecently ? 1000 : -1000,
             }).on('click', function(event) {
                 // close tooltip on click to prevent tooltip and popup showing at same time
                 event.target.closeTooltip();
