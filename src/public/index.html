@@ -2720,6 +2720,7 @@
         disableClusteringAtZoom: 10, // zoom level where node clustering is disabled
     });
     var nodesBackboneLayerGroup = new L.LayerGroup();
+    var nodesMediumFastLayerGroup = new L.LayerGroup();
     var waypointsLayerGroup = new L.LayerGroup();
     var nodePositionHistoryLayerGroup = new L.LayerGroup();
     var traceroutesLayerGroup = new L.LayerGroup();
@@ -2791,6 +2792,7 @@
             "All": nodesLayerGroup,
             "Routers": nodesRouterLayerGroup,
             "Backbone": nodesBackboneLayerGroup,
+            "Medium Fast": nodesMediumFastLayerGroup,
             "Clustered": nodesClusteredLayerGroup,
             "None": new L.LayerGroup(),
         },
@@ -2970,6 +2972,7 @@
         nodesClusteredLayerGroup.clearLayers();
         nodesRouterLayerGroup.clearLayers();
         nodesBackboneLayerGroup.clearLayers();
+        nodesMediumFastLayerGroup.clearLayers();
     }
 
     function clearAllNeighbours() {
@@ -3555,6 +3558,11 @@
             // add markers for backbone to layer group
             if(node.is_backbone) {
                 nodesBackboneLayerGroup.addLayer(marker);
+            }
+
+            // add markers for MediumFast channel to layer group
+            if(node.channel_id == "MediumFast") {
+                nodesMediumFastLayerGroup.addLayer(marker);
             }
 
             // show tooltip on desktop only
