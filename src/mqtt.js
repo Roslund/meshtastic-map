@@ -263,8 +263,9 @@ const User = root.lookupType("User");
 const Waypoint = root.lookupType("Waypoint");
 
 // run automatic purge if configured
+let purgeInterval = null;
 if(purgeIntervalSeconds){
-    setInterval(async () => {
+    purgeInterval = setInterval(async () => {
         await purgeUnheardNodes();
         await purgeOldDeviceMetrics();
         await purgeOldEnvironmentMetrics();
@@ -1446,3 +1447,29 @@ client.on("message", async (topic, message) => {
         console.log("error", e);
     }
 });
+
+// Graceful shutdown handlers
+function gracefulShutdown(signal) {
+    console.log(`Received ${signal}. Starting graceful shutdown...`);
+    
+    // Clear the purge interval if it exists
+    if(purgeInterval) {
+        clearInterval(purgeInterval);
+        console.log('Purge interval cleared');
+    }
+    
+    // Close MQTT client
+    client.end(false, async () => {
+        console.log('MQTT client disconnected');
+        await prisma.$disconnect();
+        console.log('Database connections closed');
+        console.log('Graceful shutdown completed');
+        process.exit(0);
+    });
+}
+
+// Handle SIGTERM (Docker, systemd, etc.)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Handle SIGINT (Ctrl+C)
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

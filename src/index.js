@@ -914,3 +914,23 @@ const listener = app.listen(port, () => {
     const port = listener.address().port;
     console.log(`Server running at http://127.0.0.1:${port}`);
 });
+
+// Graceful shutdown handlers
+function gracefulShutdown(signal) {
+    console.log(`Received ${signal}. Starting graceful shutdown...`);
+    
+    // Stop accepting new connections
+    listener.close(async (err) => {        
+        console.log('HTTP server closed');
+        await prisma.$disconnect();
+        console.log('Database connections closed');
+        console.log('Graceful shutdown completed');
+        process.exit(0);
+    });
+}
+
+// Handle SIGTERM (Docker, systemd, etc.)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Handle SIGINT (Ctrl+C)
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
