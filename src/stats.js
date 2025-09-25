@@ -4,7 +4,7 @@ const router = express.Router();
 const protobufjs = require("protobufjs");
 
 // create prisma db client
-const { PrismaClient } = require("@prisma/client");
+const { Prisma, PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 // load protobufs
