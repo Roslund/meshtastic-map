@@ -185,21 +185,48 @@ router.get('/battery-stats', async (req, res) => {
 });
 
 router.get('/channel-utilization-stats', async (req, res) => {
-    const days = parseInt(req.query.days || '1', 10);
-
+    const days = parseInt(req.query.days || '1', 10);  
+    const channelId = req.query.channel_id; // optional string
+  
     try {
-        const stats = await prisma.$queryRaw`
-            SELECT recorded_at, avg_channel_utilization
-            FROM channel_utilization_stats
-            WHERE recorded_at >= NOW() - INTERVAL ${days} DAY
-            ORDER BY recorded_at DESC;
-        `;
-
-        res.json(stats);
+      const stats = await prisma.$queryRaw(
+        Prisma.sql`
+          SELECT recorded_at, channel_id, avg_channel_utilization
+          FROM channel_utilization_stats
+          WHERE recorded_at >= NOW() - INTERVAL ${days} DAY
+          ${channelId ? Prisma.sql`AND channel_id = ${channelId}` : Prisma.sql``}
+          ORDER BY recorded_at DESC;
+        `
+      );
+  
+      res.json(stats);
     } catch (err) {
-        console.error('Error fetching channel utilization stats:', err);
-        res.status(500).json({ error: 'Internal server error' });
+      console.error('Error fetching channel utilization stats:', err);
+      res.status(500).json({ error: 'Internal server error' });
     }
-});
+  });
+
+  router.get('/channel-utilization', async (req, res) => {
+    const channelId = req.query.channel_id;
+  
+    try {
+      const snapshot = await prisma.$queryRaw(
+        Prisma.sql`
+          SELECT recorded_at, channel_id, avg_channel_utilization
+          FROM channel_utilization_stats
+          WHERE recorded_at = (
+            SELECT MAX(recorded_at) FROM channel_utilization_stats
+          )
+          ${channelId ? Prisma.sql`AND channel_id = ${channelId}` : Prisma.sql``}
+          ORDER BY channel_id;
+        `
+      );
+  
+      res.json(snapshot);
+    } catch (err) {
+      console.error('Error fetching latest channel utilization:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
 
 module.exports = router;
