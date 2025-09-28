@@ -2745,6 +2745,7 @@
     });
     var nodesBackboneLayerGroup = new L.LayerGroup();
     var nodesMediumFastLayerGroup = new L.LayerGroup();
+    var nodesLongFastLayerGroup = new L.LayerGroup();
     var waypointsLayerGroup = new L.LayerGroup();
     var nodePositionHistoryLayerGroup = new L.LayerGroup();
     var traceroutesLayerGroup = new L.LayerGroup();
@@ -2788,8 +2789,8 @@
         div.style.backgroundColor = 'white';
         div.style.padding = '12px';
         div.innerHTML = `<div style="margin-bottom:6px;"><strong>Legend</strong></div>`
-            + `<div style="display:flex"><div class="icon-mediumfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Medium Fast</div>`
-            + `<div style="display:flex"><div class="icon-longfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Long Fast</div>`
+            + `<div style="display:flex"><div class="icon-mediumfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> MediumFast</div>`
+            + `<div style="display:flex"><div class="icon-longfast" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> LongFast</div>`
             + `<div style="display:flex"><div class="icon-offline" style="width:12px;height:12px;margin-right:4px;margin-top:auto;margin-bottom:auto;"></div> Offline Too Long</div>`;
         return div;
     };
@@ -2816,7 +2817,8 @@
             "All": nodesLayerGroup,
             "Routers": nodesRouterLayerGroup,
             "Backbone": nodesBackboneLayerGroup,
-            "Medium Fast": nodesMediumFastLayerGroup,
+            "MediumFast": nodesMediumFastLayerGroup,
+            "LongFast": nodesLongFastLayerGroup,
             "Clustered": nodesClusteredLayerGroup,
             "None": new L.LayerGroup(),
         },
@@ -2997,6 +2999,7 @@
         nodesRouterLayerGroup.clearLayers();
         nodesBackboneLayerGroup.clearLayers();
         nodesMediumFastLayerGroup.clearLayers();
+        nodesLongFastLayerGroup.clearLayers();
     }
 
     function clearAllNeighbours() {
@@ -3595,6 +3598,11 @@
             // add markers for MediumFast channel to layer group
             if(node.channel_id == "MediumFast") {
                 nodesMediumFastLayerGroup.addLayer(marker);
+            }
+
+            // add markers for LongFast channel to layer group
+            if(node.channel_id == "LongFast") {
+                nodesLongFastLayerGroup.addLayer(marker);
             }
 
             // show tooltip on desktop only
