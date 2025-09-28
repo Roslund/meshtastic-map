@@ -1,24 +1,15 @@
-FROM node:lts-alpine AS build
+FROM node:lts-alpine
 
 WORKDIR /app
+
+RUN apk add --no-cache openssl
 
 # Copy only package files and install deps
 # This layer will be cached as long as package*.json don't change
 COPY package*.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
+RUN npm ci
 
-# Copy the rest of your source
+# Copy the rest of the source
 COPY . .
-
-FROM node:lts-alpine
-
-RUN apk add --no-cache openssl
-
-USER node:node
-
-WORKDIR /app
-
-COPY --from=build /app .
-
 
 EXPOSE 8080
