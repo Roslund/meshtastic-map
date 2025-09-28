@@ -3543,6 +3543,14 @@
                 }
             }
 
+			// determine zIndexOffset: MediumFast (1000), LongFast (-1000), Offline (-2000)
+			var zIndexOffset = 1000;
+			if(icon == iconOffline){
+				zIndexOffset = -2000;
+			} else if(node.channel_id == 'LongFast'){
+				zIndexOffset = -1000;
+			}
+
             // determine if node was recently heard uplinking packets to mqtt
             //const nodeHasUplinkedToMqttRecently = hasNodeUplinkedToMqttRecently(node);
             //if(nodeHasUplinkedToMqttRecently){
@@ -3560,10 +3568,8 @@
             const marker = L.marker([node.latitude + jitter, longitude + jitter], {
                 icon: icon,
                 tagName: node.node_id,
-                // we want to show online nodes above offline, but without needing to use separate layer groups
-                //zIndexOffset: nodeHasUplinkedToMqttRecently ? 1000 : -1000,
-                // show mediumfast nodes above longfast nodes
-                zIndexOffset: node.channel_id == "MediumFast" ? 1000 : -1000,
+				// zIndex: offline (-2000) < has channel_id (-1000) < others (1000)
+				zIndexOffset: zIndexOffset,
             }).on('click', function(event) {
                 // close tooltip on click to prevent tooltip and popup showing at same time
                 event.target.closeTooltip();
