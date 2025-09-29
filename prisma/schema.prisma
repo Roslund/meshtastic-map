@@ -239,6 +239,7 @@ model TextMessage {
   rx_snr    Decimal?
   rx_rssi   Int?
   hop_limit Int?
+  ok_to_mqtt  Boolean?
 
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt

@@ -741,6 +741,13 @@ client.on("message", async (topic, message) => {
             }
 
         }
+        
+        // check if bitfield is available, then set ok-to-mqtt
+        // else leave undefined to let Prisma ignore it.
+        let isOkToMqtt
+        if(bitfield != null){
+            isOkToMqtt = Boolean(bitfield & BITFIELD_OK_TO_MQTT_MASK);
+        }
 
         // create service envelope in db
         if(collectServiceEnvelopes){
@@ -818,6 +825,7 @@ client.on("message", async (topic, message) => {
                         rx_snr: envelope.packet.rxSnr,
                         rx_rssi: envelope.packet.rxRssi,
                         hop_limit: envelope.packet.hopLimit,
+                        ok_to_mqtt: isOkToMqtt,
                     },
                 });
             } catch (e) {
@@ -924,13 +932,6 @@ client.on("message", async (topic, message) => {
                     from: envelope.packet.from.toString(16),
                     user: user,
                 });
-            }
-
-            // check if bitfield is available, then set ok-to-mqtt
-            // else leave undefined to let Prisma ignore it.
-            let isOkToMqtt
-            if(bitfield != null){
-                isOkToMqtt = Boolean(bitfield & BITFIELD_OK_TO_MQTT_MASK);
             }
 
             // create or update node in db
