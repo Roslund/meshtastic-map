@@ -91,7 +91,9 @@ router.get('/messages-per-hour', async (req, res) => {
 
 router.get('/most-active-nodes', async (req, res) => {
     try {
-        const result = await prisma.$queryRaw`
+        const channelId = req.query.channel_id;
+        const result = await prisma.$queryRaw(
+            Prisma.sql`
         SELECT n.long_name, COUNT(*) AS count
         FROM (
             SELECT DISTINCT \`from\`, packet_id
@@ -101,12 +103,14 @@ router.get('/most-active-nodes', async (req, res) => {
                 AND packet_id IS NOT NULL
                 AND portnum != 73
                 AND \`to\` != 1
+                ${channelId ? Prisma.sql`AND channel_id = ${channelId}` : Prisma.sql``}
         ) AS unique_packets
         JOIN nodes n ON unique_packets.from = n.node_id
         GROUP BY n.long_name
         ORDER BY count DESC
         LIMIT 25;
-        `;
+            `
+        );
   
       res.set('Cache-Control', 'public, max-age=600'); // 10 min cache
       res.json(result);
