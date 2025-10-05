@@ -123,6 +123,7 @@ router.get('/most-active-nodes', async (req, res) => {
 
 router.get('/portnum-counts', async (req, res) => {
     const nodeId = req.query.nodeId ? parseInt(req.query.nodeId, 10) : null;
+    const channelId = req.query.channel_id;
     const hours = 24;
     const now = new Date();
     const startTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
@@ -132,6 +133,7 @@ router.get('/portnum-counts', async (req, res) => {
             where: {
                 created_at: { gte: startTime },
                 ...(Number.isInteger(nodeId) ? { from: nodeId } : {}),
+                ...(channelId ? { channel_id: channelId } : {}),
                 packet_id: { not: null },
                 to: { not: 1 }, // Filter out NODENUM_BROADCAST_NO_LORA
                 OR: [
