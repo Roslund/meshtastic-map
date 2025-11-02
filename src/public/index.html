@@ -3561,14 +3561,23 @@
             //}
 
             // To not have overlapping nodes. 
-            // Should probbably check if there is allready an other node in the same position before applying jitter.
-            var jitter = 0
-            if (node.position_precision != 32) {
-                jitter = 0.0005 * (Math.random() - 0.5);
-            }
+			var latJitter = 0;
+			var lonJitter = 0;
+            // If position pression > 45m apply random jitter within a small circle to avoid diagonal-only displacement
+			if (node.position_precision < 19) {
+				const maxMeters = 40;
+				const r = maxMeters * Math.sqrt(Math.random());
+				const theta = 2 * Math.PI * Math.random();
+				const dy = r * Math.sin(theta);
+				const dx = r * Math.cos(theta);
+				const metersPerDegLat = 111320;
+				const metersPerDegLon = 111320 * Math.cos(node.latitude * Math.PI / 180);
+				latJitter = dy / metersPerDegLat;
+				lonJitter = metersPerDegLon ? (dx / metersPerDegLon) : 0;
+			}
 
             // create node marker
-            const marker = L.marker([node.latitude + jitter, longitude + jitter], {
+			const marker = L.marker([node.latitude + latJitter, longitude + lonJitter], {
                 icon: icon,
                 tagName: node.node_id,
 				// zIndex: offline (-2000) < has channel_id (-1000) < others (1000)
