@@ -3926,6 +3926,37 @@
             .on('click', function(event) {
                 event.target.closeTooltip();
             });
+
+            // additional line for backbone neighbours
+            const backboneNeighbourLine = L.polyline([
+                fromMarker.getLatLng(),
+                toMarker.getLatLng(),
+            ], {
+                color: getColourForSnr(snrDb),
+                opacity: 0.75,
+                offset: 3, // assuming symmetrical connection
+            }).arrowheads({
+                size: '10px',
+                fill: true,
+                offsets: {
+                    start: '25px',
+                    end: '25px',
+                },
+            });
+
+            backboneNeighbourLine.bindTooltip(tooltip, {
+                sticky: true,
+                opacity: 1,
+                interactive: true,
+            }).bindPopup(tooltip)
+            .on('click', function(event) {
+                event.target.closeTooltip();
+            });
+
+            if(fromNode.is_backbone && toNode.is_backbone) {
+                console.log("Adding to backbone neighbours layer group");
+                backboneNeighbourLine.addTo(backboneNeighboursLayerGroup);
+            }
         }
     }
 
