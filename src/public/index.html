@@ -3189,6 +3189,8 @@
                     + `<br/>Distance: ${distance}`
                     + (initiatorNode ? `<br/>Traceroute from: <b>[${escapeString(initiatorNode.short_name)}] ${escapeString(initiatorNode.long_name)}</b>` : '')
                     + (targetNode ? `<br/>Traceroute to: <b>[${escapeString(targetNode.short_name)}] ${escapeString(targetNode.long_name)}</b>` : '')
+                    + (edge.updated_at ? `<br/>Updated: ${moment(new Date(edge.updated_at)).fromNow()}` : '')
+                    + (edge.channel_id ? `<br/>Channel: ${edge.channel_id}` : '')
                     + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
                     + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
             })();
@@ -3357,6 +3359,8 @@
                     + `<br/>Distance: ${distance}`
                     + (initiatorNode ? `<br/>Traceroute from: <b>[${escapeString(initiatorNode.short_name)}] ${escapeString(initiatorNode.long_name)}</b>` : '')
                     + (targetNode ? `<br/>Traceroute to: <b>[${escapeString(targetNode.short_name)}] ${escapeString(targetNode.long_name)}</b>` : '')
+                    + (edge.updated_at ? `<br/>Updated: ${moment(new Date(edge.updated_at)).fromNow()}` : '')
+                    + (edge.channel_id ? `<br/>Channel: ${edge.channel_id}` : '')
                     + `<br/><br/>Terrain images from <a href=\"http://www.heywhatsthat.com\" target=\"_blank\">HeyWhatsThat.com</a>`
                     + `<br/><a href=\"${terrainImageUrl}\" target=\"_blank\"><img src=\"${terrainImageUrl}\" width=\"100%\"></a>`;
             })();
