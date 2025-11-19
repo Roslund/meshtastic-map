@@ -3714,12 +3714,12 @@
 
                     // additional line for backbone neighbours
                     const backboneNeighbourLine = L.polyline([
-                        currentNode.getLatLng(),
                         neighbourNodeMarker.getLatLng(),
+                        currentNode.getLatLng(),
                     ], {
                         color: getColourForSnr(neighbour.snr),
                         opacity: 0.75,
-                        offset: symmetrical ? 3 : 0,
+                        offset: 3, // assuming symmetrical connection
                     }).arrowheads({
                         size: '10px',
                         fill: true,
