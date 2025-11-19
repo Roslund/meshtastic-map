@@ -163,7 +163,7 @@
                 <div class="my-auto leading-tight">
                     <div class="font-bold">Viktigt!</div>
                     <div class="text-sm">
-                        <span>Den 27 september går STHLM-MESH över till MediumFast modulation. Du behöver uppdatera dina inställningar. För mer info <a href="https://sthlm-mesh.se/blog/2025/övergång-till-mediumfast-den-27-september/" type="button" class="link">klicka här</a>.</span>
+                        <span>I Stockholm används LoRa preset <b>Medium Range - Fast</b>. För mer info <a href="https://sthlm-mesh.se/blog/2025/övergång-till-mediumfast-den-27-september/" type="button" class="link">klicka här</a>.</span>
                     </div>
                 </div>
 
@@ -352,24 +352,34 @@
                                     <div class="font-bold mb-2">Beskrivning</div>
                                     <div class="space-y-2">
                                         <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div>Detta är <b>STHLM-MESH</b>'s egen karta, som drivs av våran MQTT Server. Taken är att ha en karta som enbart fokuserar på stockholm. Den är baserad på Liam Cottle's open source projekt Meshtastic Map. Våran fork finner du på Github. MQTT servern vidarebefordrar alla paket till Liam Cottle's Karta.</div>
+                                            <div>Detta är en karta som enbart fokuserar på Stockholm.</div>
+                                            <div>Den är baserad på Liam Cottle's open source projekt Meshtastic Map, men har flertalet ändringar och nya funktioner som gör att vi bättre kan analysera Meshen i Stockholm.</div>
                                         </div>
                                     </div>
-                                    <div class="font-bold mb-2">Beskrivning</div>
+                                    <br>
+                                    <div class="font-bold mb-2">Frågor och svar</div>
                                     <div class="space-y-2">
                                         <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div class="font-semibold">Hur kan jag ansluta min nod till MQTT servern?</div>
-                                            <div>Då vi enbart vill analysera Meshen i stockholm är MQTT servern inte öppen för alla.</div>
-                                            <div>Vill du koppla upp din nod, kontakta @Roslund på Discord.</div>
+                                            <div class="font-semibold">Hur får jag min nod att synas på kartan?</div>
+                                            <div>Din nod behöver anting ha en GPS, ha en fast position inställd, eller att din telefon delar sin position.</div> 
+                                            <div>Utöver detta måste platsdelning vara påslåget under kanalinställningarna för MediumFast kanalen (vanligtvis kanal 0).</div>
                                         </div>
                                         <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div class="font-semibold">Inställningar:</div>
+                                            <div class="font-semibold">Min nod är på fel plats på kartan</div>
+                                            <div>Detta är troligtvis för att din nod inte delar <b>exakt position</b>. Som standard är positionsprecisionen inställd på &plusmn; 3 km, vilket betyder att noden kan befinna sig inom en cirkel med radien 3 kilometer.</div>
+                                            <div>Du kan ändra positions precisionen i kanalinställningarna. För mer info om positions precisionen, <a href="https://sthlm-mesh.se/docs/position/#position-precision">klicka här</a>.</div>
+                                        </div>
+                                        <div class="bg-gray-100 rounded p-2 border border-gray-200">
+                                            <div class="font-semibold">Hur kan jag ansluta min nod till MQTT servern?</div>
+                                            <div>Då vi enbart vill analysera Meshen i stockholm är MQTT servern inte öppen för alla. Endast ett fåtal noder är uppkopplade till MQTT för att kunna analysera trafiken som faktiskt går över LoRa.</div>
+                                            <div>De noder som är kopplade mot MQTT servern bör:</div> 
                                             <ul class="list-disc list-inside">
-                                                <li>Address: mqtt.sthlm-mesh.se</li>
-                                                <li>Encryption Enabled: Yes</li>
-                                                <li>JSON Output: No</li>
-                                                <li>TLS Enabled: No</li>
+                                                <li>Vara på en unik geografisk plats, då vi vill se hur trafiken fördelas</li>
+                                                <li>Ha en stabil fast koppling till internet (via Ethernet eller WiFi)</li>
+                                                <li>Ha hög tillgänglighet</li>
+                                                <li>Ha direktkontakt med flertalet andra noder</li>
                                             </ul>
+                                            <div>Tror du att din nod kan bidra, kontakta @Roslund på Discord.</div>
                                         </div>
                                     </div>
                                 </div>
