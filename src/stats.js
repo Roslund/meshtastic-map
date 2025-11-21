@@ -21,6 +21,12 @@ router.get('/hardware-models', async (req, res) => {
         // get nodes from db
         const results = await prisma.node.groupBy({
             by: ['hardware_model'],
+            where: {
+                 // Since we removed retention; only include nodes that have been updated in the last 30 days
+                updated_at: {
+                    gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // within last 30 days
+                }
+            },
             orderBy: {
                 _count: {
                     hardware_model: 'desc',

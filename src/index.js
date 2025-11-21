@@ -219,6 +219,10 @@ app.get('/api/v1/nodes', async (req, res) => {
             where: {
                 role: role,
                 hardware_model: hardwareModel,
+                // Since we removed retention; only include nodes that have been updated in the last 30 days
+                updated_at: {
+                    gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // within last 30 days
+                }
             },
         });
 
