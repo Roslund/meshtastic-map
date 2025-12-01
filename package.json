@@ -14,7 +14,7 @@
     "command-line-usage": "^7.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
-    "express": "^5.0.0",
+    "express": "^5.2.1",
     "mqtt": "^5.14.1",
     "protobufjs": "^7.5.4"
   },
