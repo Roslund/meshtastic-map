@@ -4340,9 +4340,11 @@
     function connectWebSocket() {
         // Determine WebSocket URL - use same hostname as current page, port 8081
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = window.location.hostname;
-        const wsPort = '8081';
-        const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`;
+        // Heuristic: if running on localhost, use port 8081; otherwise use /ws path via Nginx
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const wsUrl = isLocalhost
+            ? `${wsProtocol}//${location.hostname}:8081`
+            : `${wsProtocol}//${location.host}/ws`;
 
         console.log('Connecting to WebSocket:', wsUrl);
         ws = new WebSocket(wsUrl);
