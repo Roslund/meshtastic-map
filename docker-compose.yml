@@ -30,6 +30,18 @@ services:
       DATABASE_URL: "mysql://root:password@database:3306/meshtastic-map?connection_limit=100"
       MAP_OPTS: "" # add any custom index.js options here
 
+  # publishes mqtt packets via websocket
+  meshtastic-ws:
+    container_name: meshtastic-ws
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: /app/docker/ws.sh
+    ports:
+      - 8081:8081/tcp
+    environment:
+      WS_OPTS: ""
+
   # runs the database to store everything from mqtt
   database:
     container_name: database
