@@ -2892,14 +2892,19 @@
         traceroutesLayerGroup.addTo(map);
     }
 
-    // update config when map overlay is added
     map.on('overlayadd', function(event) {
+        // update config when map overlay is added
         const layerName = event.name;
         const enabledOverlayLayers = getConfigMapEnabledOverlayLayers();
         if(!enabledOverlayLayers.includes(layerName)){
             enabledOverlayLayers.push(layerName);
         }
         setConfigMapEnabledOverlayLayers(enabledOverlayLayers);
+
+        // clear traceroutes layer when traceroutes overlay is added
+        if (layerName === "Traceroutes") {
+            traceroutesLayerGroup.clearLayers();
+        }
     });
 
     // update config when map overlay is removed
