@@ -4488,7 +4488,7 @@
                         delete tracerouteLines[routeKey];
                     }
                     activeTracerouteKeys.delete(routeKey);
-                }, 2000);
+                }, 2500);
                 return;
             }
 
@@ -4512,9 +4512,9 @@
             line.setStyle({ opacity: 1.0 });
             tracerouteLines[routeKey].lines.push(line);
 
-            // Animate next hop after 600ms delay
+            // Animate next hop after 700ms delay
             hopIndex++;
-            setTimeout(animateNextHop, 600);
+            setTimeout(animateNextHop, 700);
         };
 
         // Start animation
