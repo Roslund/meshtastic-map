@@ -983,7 +983,12 @@ client.on("message", async (topic, message) => {
                     },
                 });
             } catch (e) {
-                console.error(e);
+                // Ignore MySQL error 1020 "Record has changed since last read" - this is a race condition
+                // that occurs when multiple packets arrive concurrently for the same node
+                const errorMessage = e.message || String(e);
+                if (!errorMessage.includes('Record has changed since last read')) {
+                    console.error(e);
+                }
             }
 
             // Keep track of the names a node has been using.
@@ -1006,7 +1011,12 @@ client.on("message", async (topic, message) => {
                     } 
                   });                  
             } catch (e) {
-                console.error(e);
+                // Ignore MySQL error 1020 "Record has changed since last read" - this is a race condition
+                // that occurs when multiple packets arrive concurrently for the same node
+                const errorMessage = e.message || String(e);
+                if (!errorMessage.includes('Record has changed since last read')) {
+                    console.error(e);
+                }
             }
         }
 
