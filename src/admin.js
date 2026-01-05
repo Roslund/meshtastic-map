@@ -1,6 +1,7 @@
 // node src/admin.js --purge-node-id 123
 // node src/admin.js --purge-node-id '!AABBCCDD'
 
+require('./utils/logger');
 const commandLineArgs = require("command-line-args");
 const commandLineUsage = require("command-line-usage");
 
