@@ -1429,6 +1429,7 @@ client.on("message", async (topic, message) => {
                     || portnum === 0 // ignore UNKNOWN_APP
                     || portnum === 1 // ignore TEXT_MESSAGE_APP
                     || portnum === 5 // ignore ROUTING_APP
+                    || portnum === 6 // ignore ADMIN_APP
                     || portnum === 34 // ignore PAXCOUNTER_APP
                     || portnum === 65 // ignore STORE_FORWARD_APP
                     || portnum === 66 // ignore RANGE_TEST_APP
