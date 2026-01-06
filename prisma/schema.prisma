@@ -348,3 +348,27 @@ model ChannelUtilizationStats {
   @@index([recorded_at])
   @@map("channel_utilization_stats")
 }
+
+model Edge {
+  id             BigInt  @id @default(autoincrement())
+  from_node_id   BigInt
+  to_node_id     BigInt
+  snr            Int
+  from_latitude  Int?
+  from_longitude Int?
+  to_latitude    Int?
+  to_longitude   Int?
+  packet_id      BigInt
+  channel_id     String?
+  gateway_id     BigInt?
+  source         String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@index(from_node_id)
+  @@index(to_node_id)
+  @@index(created_at)
+  @@index([from_node_id, to_node_id])
+  @@map("edges")
+}
