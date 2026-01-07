@@ -1479,6 +1479,68 @@ client.on("message", async (topic, message) => {
                         });
                     }
 
+                    // Extract edges from route_back path
+                    const routeBack = routeDiscovery.routeBack || [];
+                    const snrBack = routeDiscovery.snrBack || [];
+                    
+                    if(routeBack.length > 0) {
+                        // Number of edges in route_back equals route_back.length
+                        for(let i = 0; i < routeBack.length; i++) {
+                            // Get SNR for this edge
+                            if(i >= snrBack.length) {
+                                // Array length mismatch - skip this edge
+                                continue;
+                            }
+
+                            const snr = snrBack[i];
+                            
+                            // Skip if SNR is -128 (no SNR recorded)
+                            if(snr === -128) {
+                                continue;
+                            }
+
+                            // Determine from_node and to_node
+                            let fromNodeId, toNodeId;
+
+                            if(i === 0) {
+                                // First edge: from -> route_back[0]
+                                fromNodeId = destinationNodeId; // 'from' in the packet
+                                toNodeId = routeBack[0];
+                            } else {
+                                // Subsequent edges: route_back[i-1] -> route_back[i]
+                                fromNodeId = routeBack[i - 1];
+                                toNodeId = routeBack[i];
+                            }
+
+                            // Fetch node positions from Node table
+                            const [fromNode, toNode] = await Promise.all([
+                                prisma.node.findUnique({
+                                    where: { node_id: fromNodeId },
+                                    select: { latitude: true, longitude: true },
+                                }),
+                                prisma.node.findUnique({
+                                    where: { node_id: toNodeId },
+                                    select: { latitude: true, longitude: true },
+                                }),
+                            ]);
+
+                            // Create edge record
+                            edgesToCreate.push({
+                                from_node_id: fromNodeId,
+                                to_node_id: toNodeId,
+                                snr: snr,
+                                from_latitude: fromNode?.latitude ?? null,
+                                from_longitude: fromNode?.longitude ?? null,
+                                to_latitude: toNode?.latitude ?? null,
+                                to_longitude: toNode?.longitude ?? null,
+                                packet_id: packetId,
+                                channel_id: channelId,
+                                gateway_id: gatewayId,
+                                source: "TRACEROUTE_APP",
+                            });
+                        }
+                    }
+
                     // Bulk insert edges
                     if(edgesToCreate.length > 0) {
                         await prisma.edge.createMany({
