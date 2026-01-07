@@ -1094,6 +1094,70 @@ client.on("message", async (topic, message) => {
                 console.error(e);
             }
 
+            // Extract edges from neighbour info
+            try {
+                const fromNodeId = envelope.packet.from;
+                const neighbors = neighbourInfo.neighbors || [];
+                const packetId = envelope.packet.id;
+                const channelId = envelope.channelId;
+                const gatewayId = envelope.gatewayId ? convertHexIdToNumericId(envelope.gatewayId) : null;
+                const edgesToCreate = [];
+
+                for(const neighbour of neighbors) {
+                    // Skip if no node ID
+                    if(!neighbour.nodeId) {
+                        continue;
+                    }
+
+                    // Skip if SNR is invalid (0 or null/undefined)
+                    // Note: SNR can be negative, so we check for 0 specifically
+                    if(neighbour.snr === 0 || neighbour.snr == null) {
+                        continue;
+                    }
+
+                    const toNodeId = neighbour.nodeId;
+                    const snr = neighbour.snr;
+
+                    // Fetch node positions from Node table
+                    const [fromNode, toNode] = await Promise.all([
+                        prisma.node.findUnique({
+                            where: { node_id: fromNodeId },
+                            select: { latitude: true, longitude: true },
+                        }),
+                        prisma.node.findUnique({
+                            where: { node_id: toNodeId },
+                            select: { latitude: true, longitude: true },
+                        }),
+                    ]);
+
+                    // Create edge record
+                    edgesToCreate.push({
+                        from_node_id: fromNodeId,
+                        to_node_id: toNodeId,
+                        snr: snr,
+                        from_latitude: fromNode?.latitude ?? null,
+                        from_longitude: fromNode?.longitude ?? null,
+                        to_latitude: toNode?.latitude ?? null,
+                        to_longitude: toNode?.longitude ?? null,
+                        packet_id: packetId,
+                        channel_id: channelId,
+                        gateway_id: gatewayId,
+                        source: "NEIGHBORINFO_APP",
+                    });
+                }
+
+                // Bulk insert edges
+                if(edgesToCreate.length > 0) {
+                    await prisma.edge.createMany({
+                        data: edgesToCreate,
+                        skipDuplicates: true, // Skip if exact duplicate exists
+                    });
+                }
+            } catch (e) {
+                // Log error but don't crash - edge extraction is non-critical
+                console.error("Error extracting edges from neighbour info:", e);
+            }
+
             // don't store all neighbour infos, but we want to update the existing node above
             if(!collectNeighbourInfo){
                 return;
