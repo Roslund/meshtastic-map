@@ -1440,6 +1440,36 @@
                                 <div class="text-xs text-gray-600">Map will animate flying to nodes.</div>
                             </div>
 
+                            <!-- configConnectionsTimePeriodInSeconds -->
+                            <div class="p-2">
+                                <label class="block text-sm font-medium text-gray-900">Connections Time Period</label>
+                                <div class="text-xs text-gray-600 mb-2">Edges within this time period are shown in the Connections layer. Reload to update map.</div>
+                                <select v-model="configConnectionsTimePeriodInSeconds" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                    <option value="300">5 minutes</option>
+                                    <option value="900">15 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                    <option value="21600">6 hours</option>
+                                    <option value="43200">12 hours</option>
+                                    <option value="86400">24 hours</option>
+                                    <option value="172800">2 days</option>
+                                    <option value="259200">3 days</option>
+                                    <option value="604800">7 days</option>
+                                    <option value="1209600">14 days</option>
+                                    <option value="2592000">30 days</option>
+                                </select>
+                            </div>
+
+                            <!-- configConnectionsColoredLines -->
+                            <div class="p-2">
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" v-model="configConnectionsColoredLines" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300" required>
+                                    </div>
+                                    <label class="ml-2 text-sm font-medium text-gray-900">Colored Connection Lines</label>
+                                </div>
+                                <div class="text-xs text-gray-600">Colors the connection lines by the average SNR in the worst direction. Reload to update map.</div>
+                            </div>
+
                         </div>
 
                     </div>
@@ -1725,6 +1755,29 @@
         return localStorage.setItem("config_zoom_level_go_to_node", value);
     }
 
+    function getConfigConnectionsTimePeriodInSeconds() {
+        const value = localStorage.getItem("config_connections_time_period_in_seconds");
+        // default to 24 hours if unset
+        return value != null ? parseInt(value) : 86400;
+    }
+
+    function setConfigConnectionsTimePeriodInSeconds(value) {
+        return localStorage.setItem("config_connections_time_period_in_seconds", value);
+    }
+
+    function getConfigConnectionsColoredLines() {
+        const value = localStorage.getItem("config_connections_colored_lines");
+        // disable colored lines by default
+        if(value === null){
+            return false;
+        }
+        return value === "true";
+    }
+
+    function setConfigConnectionsColoredLines(value) {
+        return localStorage.setItem("config_connections_colored_lines", value);
+    }
+
     function isMobile() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
@@ -1748,6 +1801,8 @@
                 configAutoUpdatePositionInUrl: window.getConfigAutoUpdatePositionInUrl(),
                 configEnableMapAnimations: window.getConfigEnableMapAnimations(),
                 configTemperatureFormat: window.getConfigTemperatureFormat(),
+                configConnectionsTimePeriodInSeconds: window.getConfigConnectionsTimePeriodInSeconds(),
+                configConnectionsColoredLines: window.getConfigConnectionsColoredLines(),
 
                 isShowingHardwareModels: false,
                 hardwareModelStats: null,
@@ -2673,6 +2728,12 @@
             configTemperatureFormat() {
                 window.setConfigTemperatureFormat(this.configTemperatureFormat);
             },
+            configConnectionsTimePeriodInSeconds() {
+                window.setConfigConnectionsTimePeriodInSeconds(this.configConnectionsTimePeriodInSeconds);
+            },
+            configConnectionsColoredLines() {
+                window.setConfigConnectionsColoredLines(this.configConnectionsColoredLines);
+            },
             deviceMetricsTimeRange() {
                 this.loadNodeDeviceMetrics(this.selectedNode.node_id);
             },
@@ -2771,6 +2832,7 @@
     var waypointsLayerGroup = new L.LayerGroup();
     var nodePositionHistoryLayerGroup = new L.LayerGroup();
     var traceroutesLayerGroup = new L.LayerGroup();
+    var connectionsLayerGroup = new L.LayerGroup();
 
     // create icons
     var iconMqttConnected = L.divIcon({
@@ -2859,6 +2921,7 @@
             "Legend": legendLayerGroup,
             "Neighbours": neighboursLayerGroup,
             "Backbone Connection": backboneNeighboursLayerGroup,
+            "Connections": connectionsLayerGroup,
             "Waypoints": waypointsLayerGroup,
             "Position History": nodePositionHistoryLayerGroup,
             "Traceroutes": traceroutesLayerGroup,
@@ -2881,6 +2944,9 @@
     }
     if(enabledOverlayLayers.includes("Backbone Connection")){
         backboneNeighboursLayerGroup.addTo(map);
+    }
+    if(enabledOverlayLayers.includes("Connections")){
+        connectionsLayerGroup.addTo(map);
     }
     if(enabledOverlayLayers.includes("Waypoints")){
         waypointsLayerGroup.addTo(map);
@@ -3053,6 +3119,10 @@
         traceroutesLayerGroup.clearLayers();
     }
 
+    function clearAllConnections() {
+        connectionsLayerGroup.clearLayers();
+    }
+
     function closeAllPopups() {
         map.eachLayer(function(layer) {
             if(layer.options.pane === "popupPane"){
@@ -3120,9 +3190,40 @@
     }
 
     function getColourForSnr(snr) {
-        if(snr >= -5) return "#16a34a"; // good
-        if(snr > -15) return "#fff200"; // meh
-        if(snr <= -15) return "#dc2626"; // bad
+        if(snr >= -4) return "#16a34a"; // good
+        if(snr > -8) return "#fff200"; // medium-good
+        if(snr > -12) return "#ff9f1c"; // medium
+        return "#dc2626"; // bad
+    }
+
+    function getSignalBarsIndicator(snrDb) {
+        if(snrDb == null) return '';
+        
+        // Determine number of bars based on SNR
+        let bars = 0;
+        if(snrDb >= -4) bars = 4; // good
+        else if(snrDb > -8) bars = 3; // medium-good
+        else if(snrDb > -12) bars = 2; // medium
+        else bars = 1; // bad
+        
+        const color = getColourForSnr(snrDb);
+        
+        // Create 4 bars with increasing height
+        let indicator = '<span style="display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; vertical-align: middle; margin-left: 4px;">';
+        
+        // Bar heights: 4px, 6px, 8px, 10px
+        const barHeights = [4, 6, 8, 10];
+        const barWidth = 2;
+        
+        for (let i = 0; i < 4; i++) {
+            const height = barHeights[i];
+            const isActive = i < bars;
+            const barColor = isActive ? color : '#d1d5db'; // gray for inactive bars
+            indicator += `<span style="width: ${barWidth}px; height: ${height}px; background-color: ${barColor}; border-radius: 1px; display: inline-block;"></span>`;
+        }
+        
+        indicator += '</span>';
+        return indicator;
     }
 
     function cleanUpNodeNeighbours() {
@@ -3492,6 +3593,7 @@
         clearAllNeighbours();
         clearAllWaypoints();
         clearAllTraceroutes();
+        clearAllConnections();
         clearNodeOutline();
         cleanUpNodeNeighbours();
     }
@@ -3968,6 +4070,109 @@
         }
     }
 
+    function onConnectionsUpdated(connections) {
+        // Clear existing connections
+        clearAllConnections();
+
+        for (const connection of connections) {
+            // Find both node markers
+            const nodeAMarker = findNodeMarkerById(connection.node_a);
+            const nodeBMarker = findNodeMarkerById(connection.node_b);
+
+            // Skip if either node marker doesn't exist
+            if (!nodeAMarker || !nodeBMarker) {
+                continue;
+            }
+
+            // Find node objects for names and terrain profile
+            const nodeA = findNodeById(connection.node_a);
+            const nodeB = findNodeById(connection.node_b);
+
+            if (!nodeA || !nodeB) {
+                continue;
+            }
+
+            // Calculate distance between nodes
+            const distanceInMeters = nodeAMarker.getLatLng().distanceTo(nodeBMarker.getLatLng()).toFixed(2);
+            let distance = `${distanceInMeters} meters`;
+            if (distanceInMeters >= 1000) {
+                const distanceInKilometers = (distanceInMeters / 1000).toFixed(2);
+                distance = `${distanceInKilometers} kilometers`;
+            }
+
+            // Determine line color based on worst average SNR (if colored lines enabled)
+            const configConnectionsColoredLines = getConfigConnectionsColoredLines();
+            const worstSnrDb = connection.worst_avg_snr_db;
+            const lineColor = configConnectionsColoredLines && worstSnrDb != null ? getColourForSnr(worstSnrDb) : '#2563eb';
+
+            // Create polyline (bidirectional, no arrows)
+            const line = L.polyline([
+                nodeAMarker.getLatLng(),
+                nodeBMarker.getLatLng(),
+            ], {
+                color: lineColor,
+                opacity: 0.75,
+                weight: 3,
+            }).addTo(connectionsLayerGroup);
+
+            // Generate tooltip
+            let tooltip = `<b>Connection</b>`;
+            tooltip += `<br/>[${escapeString(nodeA.short_name)}] ${escapeString(nodeA.long_name)} <-> [${escapeString(nodeB.short_name)}] ${escapeString(nodeB.long_name)}`;
+            tooltip += `<br/>Distance: ${distance}`;
+            tooltip += `<br/>`;
+
+            // Direction A -> B
+            if (connection.direction_ab.avg_snr_db != null) {
+                tooltip += `<br/><b>${escapeString(nodeA.short_name)} -> ${escapeString(nodeB.short_name)}:</b>`;
+                tooltip += `<br/>SNR: ${connection.direction_ab.avg_snr_db.toFixed(1)}dB ${getSignalBarsIndicator(connection.direction_ab.avg_snr_db)} (Average of ${connection.direction_ab.total_count} edges)`;
+                if (connection.direction_ab.last_5_edges.length > 0) {
+                    tooltip += `<br/>Last 5 edges:`;
+                    for (const edge of connection.direction_ab.last_5_edges) {
+                        const timeAgo = moment(new Date(edge.created_at)).fromNow();
+                        console.log(edge.source);
+                        const sourceIcon = edge.source === "TRACEROUTE_APP" ? "⇵" : (edge.source === "NEIGHBORINFO_APP" ? "✳" : "?");
+                        tooltip += `<br/> &nbsp;&nbsp; ${edge.snr_db.toFixed(1)}dB ${getSignalBarsIndicator(edge.snr_db)} (${timeAgo} by:${sourceIcon})`;
+                    }
+                } else {
+                    tooltip += `<br/>No recent edges`;
+                }
+            }
+
+            // Direction B -> A
+            if (connection.direction_ba.avg_snr_db != null) {
+                tooltip += `<br/><br/><b>${escapeString(nodeB.short_name)} -> ${escapeString(nodeA.short_name)}:</b>`;
+                tooltip += `<br/>SNR: ${connection.direction_ba.avg_snr_db.toFixed(1)}dB ${getSignalBarsIndicator(connection.direction_ba.avg_snr_db)} (Average of ${connection.direction_ba.total_count} edges)`;
+                if (connection.direction_ba.last_5_edges.length > 0) {
+                    tooltip += `<br/>Last 5 edges:`;
+                    for (const edge of connection.direction_ba.last_5_edges) {
+                        const timeAgo = moment(new Date(edge.created_at)).fromNow();
+                        const sourceIcon = edge.source === "TRACEROUTE_APP" ? "⇵" : (edge.source === "NEIGHBORINFO_APP" ? "✳" : "?");
+                        tooltip += `<br/> &nbsp;&nbsp; ${edge.snr_db.toFixed(1)}dB ${getSignalBarsIndicator(edge.snr_db)} (${timeAgo} by:${sourceIcon})`;
+                    }
+                } else {
+                    tooltip += `<br/>No recent edges`;
+                }
+            }
+
+            // Add terrain profile image
+            const terrainImageUrl = getTerrainProfileImage(nodeA, nodeB);
+            tooltip += `<br/><br/>Terrain images from <a href="http://www.heywhatsthat.com" target="_blank">HeyWhatsThat.com</a>`;
+            tooltip += `<br/><a href="${terrainImageUrl}" target="_blank"><img src="${terrainImageUrl}" width="100%"></a>`;
+
+            // Bind tooltip and popup
+            line.bindTooltip(tooltip, {
+                sticky: true,
+                opacity: 1,
+                interactive: true,
+            })
+            .bindPopup(tooltip)
+            .on('click', function(event) {
+                // close tooltip on click to prevent tooltip and popup showing at same time
+                event.target.closeTooltip();
+            });
+        }
+    }
+
     function onPositionHistoryUpdated(updatedPositionHistories) {
 
         let positionHistoryLinesCords = [];
@@ -4109,6 +4314,17 @@
             onTracerouteEdgesUpdated(response.data.traceroute_edges ?? []);
         }).catch(() => {
             onTracerouteEdgesUpdated([]);
+        });
+
+        // fetch connections (edges)
+        const connectionsTimePeriodSec = getConfigConnectionsTimePeriodInSeconds();
+        const connectionsTimeFrom = connectionsTimePeriodSec ? (Date.now() - connectionsTimePeriodSec * 1000) : undefined;
+        const connectionsParams = new URLSearchParams();
+        if (connectionsTimeFrom) connectionsParams.set('time_from', connectionsTimeFrom);
+        await window.axios.get(`/api/v1/connections?${connectionsParams.toString()}`).then(async (response) => {
+            onConnectionsUpdated(response.data.connections ?? []);
+        }).catch(() => {
+            onConnectionsUpdated([]);
         });
 
     }
