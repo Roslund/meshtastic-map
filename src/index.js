@@ -156,6 +156,15 @@ app.get('/api', async (req, res) => {
             }
         },
         {
+            "path": "/api/v1/connections",
+            "description": "Aggregated edges between nodes from traceroutes",
+            "params": {
+                "node_id": "Only include connections involving this node id",
+                "time_from": "Only include edges created after this unix timestamp (milliseconds)",
+                "time_to": "Only include edges created before this unix timestamp (milliseconds)"
+            }
+        },
+        {
             "path": "/api/v1/nodes/:nodeId/position-history",
             "description": "Position history for a meshtastic node",
             "params": {
@@ -688,6 +697,194 @@ app.get('/api/v1/traceroutes', async (req, res) => {
 
         res.json({
             traceroute_edges: Array.from(edges.values()),
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Something went wrong, try again later.",
+        });
+    }
+});
+
+// Aggregated edges endpoint
+// GET /api/v1/connections?node_id=...&time_from=...&time_to=...
+app.get('/api/v1/connections', async (req, res) => {
+    try {
+        const nodeId = req.query.node_id ? parseInt(req.query.node_id) : undefined;
+        const timeFrom = req.query.time_from ? parseInt(req.query.time_from) : undefined;
+        const timeTo = req.query.time_to ? parseInt(req.query.time_to) : undefined;
+
+        // Query edges from database
+        const edges = await prisma.edge.findMany({
+            where: {
+                created_at: {
+                    ...(timeFrom && { gte: new Date(timeFrom) }),
+                    ...(timeTo && { lte: new Date(timeTo) }),
+                },
+                // Only include edges where both nodes have positions
+                from_latitude: { not: null },
+                from_longitude: { not: null },
+                to_latitude: { not: null },
+                to_longitude: { not: null },
+                // If node_id is provided, filter edges where either from_node_id or to_node_id matches
+                ...(nodeId !== undefined && {
+                    OR: [
+                        { from_node_id: nodeId },
+                        { to_node_id: nodeId },
+                    ],
+                }),
+            },
+            orderBy: [
+                { created_at: 'desc' },
+                { packet_id: 'desc' },
+            ],
+        });
+
+        // Collect all unique node IDs from edges
+        const nodeIds = new Set();
+        for (const edge of edges) {
+            nodeIds.add(edge.from_node_id);
+            nodeIds.add(edge.to_node_id);
+        }
+
+        // Fetch current positions for all nodes
+        const nodes = await prisma.node.findMany({
+            where: {
+                node_id: { in: Array.from(nodeIds) },
+            },
+            select: {
+                node_id: true,
+                latitude: true,
+                longitude: true,
+            },
+        });
+
+        // Create a map of current node positions
+        const nodePositions = new Map();
+        for (const node of nodes) {
+            nodePositions.set(node.node_id, {
+                latitude: node.latitude,
+                longitude: node.longitude,
+            });
+        }
+
+        // Filter edges: only include edges where both nodes are still at the same location
+        const validEdges = edges.filter(edge => {
+            const fromCurrentPos = nodePositions.get(edge.from_node_id);
+            const toCurrentPos = nodePositions.get(edge.to_node_id);
+
+            // Skip if either node doesn't exist or doesn't have a current position
+            if (!fromCurrentPos || !toCurrentPos || 
+                fromCurrentPos.latitude === null || fromCurrentPos.longitude === null ||
+                toCurrentPos.latitude === null || toCurrentPos.longitude === null) {
+                return false;
+            }
+
+            // Check if stored positions match current positions
+            const fromMatches = fromCurrentPos.latitude === edge.from_latitude && 
+                               fromCurrentPos.longitude === edge.from_longitude;
+            const toMatches = toCurrentPos.latitude === edge.to_latitude && 
+                             toCurrentPos.longitude === edge.to_longitude;
+
+            return fromMatches && toMatches;
+        });
+
+        // Normalize node pairs: always use min/max to treat A->B and B->A as same connection
+        const connectionsMap = new Map();
+
+        for (const edge of validEdges) {
+            const nodeA = edge.from_node_id < edge.to_node_id ? edge.from_node_id : edge.to_node_id;
+            const nodeB = edge.from_node_id < edge.to_node_id ? edge.to_node_id : edge.from_node_id;
+            const key = `${nodeA}-${nodeB}`;
+
+            if (!connectionsMap.has(key)) {
+                connectionsMap.set(key, {
+                    node_a: nodeA,
+                    node_b: nodeB,
+                    direction_ab: [], // A -> B edges
+                    direction_ba: [], // B -> A edges
+                });
+            }
+
+            const connection = connectionsMap.get(key);
+            const isAB = edge.from_node_id === nodeA;
+
+            // Add edge to appropriate direction
+            if (isAB) {
+                connection.direction_ab.push({
+                    snr: edge.snr,
+                    snr_db: edge.snr / 4, // Convert to dB
+                    created_at: edge.created_at,
+                    packet_id: edge.packet_id,
+                    source: edge.source,
+                });
+            } else {
+                connection.direction_ba.push({
+                    snr: edge.snr,
+                    snr_db: edge.snr / 4,
+                    created_at: edge.created_at,
+                    packet_id: edge.packet_id,
+                    source: edge.source,
+                });
+            }
+        }
+
+        // Aggregate each connection
+        const connections = Array.from(connectionsMap.values()).map(conn => {
+            // Deduplicate edges by packet_id for each direction (keep first occurrence, which is most recent)
+            const dedupeByPacketId = (edges) => {
+                const seen = new Set();
+                return edges.filter(edge => {
+                    if (seen.has(edge.packet_id)) {
+                        return false;
+                    }
+                    seen.add(edge.packet_id);
+                    return true;
+                });
+            };
+
+            const deduplicatedAB = dedupeByPacketId(conn.direction_ab);
+            const deduplicatedBA = dedupeByPacketId(conn.direction_ba);
+
+            // Calculate average SNR for A->B (using deduplicated edges)
+            const avgSnrAB = deduplicatedAB.length > 0
+                ? deduplicatedAB.reduce((sum, e) => sum + e.snr_db, 0) / deduplicatedAB.length
+                : null;
+
+            // Calculate average SNR for B->A (using deduplicated edges)
+            const avgSnrBA = deduplicatedBA.length > 0
+                ? deduplicatedBA.reduce((sum, e) => sum + e.snr_db, 0) / deduplicatedBA.length
+                : null;
+
+            // Get last 5 edges for each direction (already sorted by created_at DESC, packet_id DESC, now deduplicated)
+            const last5AB = deduplicatedAB.slice(0, 5);
+            const last5BA = deduplicatedBA.slice(0, 5);
+
+            // Determine worst average SNR
+            const worstAvgSnrDb = [avgSnrAB, avgSnrBA]
+                .filter(v => v !== null)
+                .reduce((min, val) => val < min ? val : min, Infinity);
+
+            return {
+                node_a: conn.node_a,
+                node_b: conn.node_b,
+                direction_ab: {
+                    avg_snr_db: avgSnrAB,
+                    last_5_edges: last5AB,
+                    total_count: deduplicatedAB.length, // Use deduplicated count
+                },
+                direction_ba: {
+                    avg_snr_db: avgSnrBA,
+                    last_5_edges: last5BA,
+                    total_count: deduplicatedBA.length, // Use deduplicated count
+                },
+                worst_avg_snr_db: worstAvgSnrDb !== Infinity ? worstAvgSnrDb : null,
+            };
+        }).filter(conn => conn.worst_avg_snr_db !== null); // Only return connections with at least one direction
+
+        res.json({
+            connections: connections,
         });
 
     } catch (err) {
