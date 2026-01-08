@@ -1096,7 +1096,7 @@ client.on("message", async (topic, message) => {
 
             // Extract edges from neighbour info
             try {
-                const fromNodeId = envelope.packet.from;
+                const toNodeId = envelope.packet.from;
                 const neighbors = neighbourInfo.neighbors || [];
                 const packetId = envelope.packet.id;
                 const channelId = envelope.channelId;
@@ -1115,7 +1115,7 @@ client.on("message", async (topic, message) => {
                         continue;
                     }
 
-                    const toNodeId = neighbour.nodeId;
+                    const fromNodeId = neighbour.nodeId;
                     const snr = neighbour.snr;
 
                     // Fetch node positions from Node table
