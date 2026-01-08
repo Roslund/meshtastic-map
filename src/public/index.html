@@ -3730,7 +3730,7 @@
             }
             tooltip += `<br/>[${escapeString(node.short_name)}] ${escapeString(node.long_name)}`;
             tooltip += `<br/>${positionHistory.latitude}, ${positionHistory.longitude}`;
-            tooltip += `<br/>Heard on: ${moment(new Date(positionHistory.created_at)).format("DD/MM/YYYY hh:mm A")}`;
+            tooltip += `<br/>Heard on: ${moment(new Date(positionHistory.created_at)).format("YYYY-MM-DD HH:mm")}`;
 
             // add gateway info if available
             if(positionHistory.gateway_id){
