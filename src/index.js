@@ -159,6 +159,7 @@ app.get('/api', async (req, res) => {
             "path": "/api/v1/connections",
             "description": "Aggregated edges between nodes from traceroutes",
             "params": {
+                "node_id": "Only include connections involving this node id",
                 "time_from": "Only include edges created after this unix timestamp (milliseconds)",
                 "time_to": "Only include edges created before this unix timestamp (milliseconds)"
             }
@@ -707,9 +708,10 @@ app.get('/api/v1/traceroutes', async (req, res) => {
 });
 
 // Aggregated edges endpoint
-// GET /api/v1/connections?time_from=...&time_to=...
+// GET /api/v1/connections?node_id=...&time_from=...&time_to=...
 app.get('/api/v1/connections', async (req, res) => {
     try {
+        const nodeId = req.query.node_id ? parseInt(req.query.node_id) : undefined;
         const timeFrom = req.query.time_from ? parseInt(req.query.time_from) : undefined;
         const timeTo = req.query.time_to ? parseInt(req.query.time_to) : undefined;
 
@@ -717,14 +719,21 @@ app.get('/api/v1/connections', async (req, res) => {
         const edges = await prisma.edge.findMany({
             where: {
                 created_at: {
-                    gte: timeFrom ? new Date(timeFrom) : undefined,
-                    lte: timeTo ? new Date(timeTo) : undefined,
+                    ...(timeFrom && { gte: new Date(timeFrom) }),
+                    ...(timeTo && { lte: new Date(timeTo) }),
                 },
                 // Only include edges where both nodes have positions
                 from_latitude: { not: null },
                 from_longitude: { not: null },
                 to_latitude: { not: null },
                 to_longitude: { not: null },
+                // If node_id is provided, filter edges where either from_node_id or to_node_id matches
+                ...(nodeId !== undefined && {
+                    OR: [
+                        { from_node_id: nodeId },
+                        { to_node_id: nodeId },
+                    ],
+                }),
             },
             orderBy: [
                 { created_at: 'desc' },
