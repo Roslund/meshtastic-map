@@ -1379,6 +1379,31 @@
                                 <div class="text-xs text-gray-600">Colors the connection lines by the average SNR in the worst direction. Reload to update map.</div>
                             </div>
 
+                            <!-- configConnectionsBidirectionalOnly -->
+                            <div class="p-2">
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" v-model="configConnectionsBidirectionalOnly" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300" required>
+                                    </div>
+                                    <label class="ml-2 text-sm font-medium text-gray-900">Bidirectional Connections Only</label>
+                                </div>
+                                <div class="text-xs text-gray-600">Only show connections where data flows in both directions. Reload to update map.</div>
+                            </div>
+
+                            <!-- configConnectionsMinSnrDb -->
+                            <div class="p-2">
+                                <label class="block text-sm font-medium text-gray-900">Connections Minimum SNR (dB)</label>
+                                <div class="text-xs text-gray-600 mb-2">Only show connections where at least one direction has SNR above this threshold. Leave empty to show all connections. Reload to update map.</div>
+                                <input type="number" v-model="configConnectionsMinSnrDb" placeholder="e.g. -10" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <div class="mt-2 flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" v-model="configConnectionsBidirectionalMinSnr" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300" required>
+                                    </div>
+                                    <label class="ml-2 text-sm font-medium text-gray-900">Bidirectional Minimum SNR</label>
+                                </div>
+                                <div class="text-xs text-gray-600 ml-6">If checked, all existing directions must meet the minimum SNR threshold (both directions if bidirectional, single direction if unidirectional).</div>
+                            </div>
+
                             <!-- configConnectionsMaxDistanceInMeters -->
                             <div class="p-2">
                                 <label class="block text-sm font-medium text-gray-900">Connections Max Distance (meters)</label>
@@ -1682,8 +1707,8 @@
 
     function getConfigConnectionsTimePeriodInSeconds() {
         const value = localStorage.getItem("config_connections_time_period_in_seconds");
-        // default to 24 hours if unset
-        return value != null ? parseInt(value) : 86400;
+        // default to 7 days if unset
+        return value != null ? parseInt(value) : 604800;
     }
 
     function setConfigConnectionsTimePeriodInSeconds(value) {
@@ -1701,6 +1726,51 @@
 
     function setConfigConnectionsColoredLines(value) {
         return localStorage.setItem("config_connections_colored_lines", value);
+    }
+
+    function getConfigConnectionsBidirectionalOnly() {
+        const value = localStorage.getItem("config_connections_bidirectional_only");
+        // disable bidirectional filter by default
+        if(value === null){
+            return false;
+        }
+        return value === "true";
+    }
+
+    function setConfigConnectionsBidirectionalOnly(value) {
+        return localStorage.setItem("config_connections_bidirectional_only", value);
+    }
+
+    function getConfigConnectionsMinSnrDb() {
+        const value = localStorage.getItem("config_connections_min_snr_db");
+        // default to null (unset)
+        if(value === null || value === ""){
+            return null;
+        }
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed;
+    }
+
+    function setConfigConnectionsMinSnrDb(value) {
+        if(value === null || value === "" || value === undefined){
+            return localStorage.removeItem("config_connections_min_snr_db");
+        }
+        // Convert to string for localStorage (handles both number and string inputs)
+        const stringValue = typeof value === "number" ? value.toString() : String(value);
+        return localStorage.setItem("config_connections_min_snr_db", stringValue);
+    }
+
+    function getConfigConnectionsBidirectionalMinSnr() {
+        const value = localStorage.getItem("config_connections_bidirectional_min_snr");
+        // disable bidirectional minimum SNR by default
+        if(value === null){
+            return false;
+        }
+        return value === "true";
+    }
+
+    function setConfigConnectionsBidirectionalMinSnr(value) {
+        return localStorage.setItem("config_connections_bidirectional_min_snr", value);
     }
 
     function isMobile() {
@@ -1726,6 +1796,9 @@
                 configTemperatureFormat: window.getConfigTemperatureFormat(),
                 configConnectionsTimePeriodInSeconds: window.getConfigConnectionsTimePeriodInSeconds(),
                 configConnectionsColoredLines: window.getConfigConnectionsColoredLines(),
+                configConnectionsBidirectionalOnly: window.getConfigConnectionsBidirectionalOnly(),
+                configConnectionsMinSnrDb: window.getConfigConnectionsMinSnrDb(),
+                configConnectionsBidirectionalMinSnr: window.getConfigConnectionsBidirectionalMinSnr(),
 
                 isShowingHardwareModels: false,
                 hardwareModelStats: null,
@@ -2643,6 +2716,15 @@
             configConnectionsColoredLines() {
                 window.setConfigConnectionsColoredLines(this.configConnectionsColoredLines);
             },
+            configConnectionsBidirectionalOnly() {
+                window.setConfigConnectionsBidirectionalOnly(this.configConnectionsBidirectionalOnly);
+            },
+            configConnectionsMinSnrDb() {
+                window.setConfigConnectionsMinSnrDb(this.configConnectionsMinSnrDb);
+            },
+            configConnectionsBidirectionalMinSnr() {
+                window.setConfigConnectionsBidirectionalMinSnr(this.configConnectionsBidirectionalMinSnr);
+            },
             deviceMetricsTimeRange() {
                 this.loadNodeDeviceMetrics(this.selectedNode.node_id);
             },
@@ -3214,6 +3296,48 @@
 
                 if (!otherNode || !otherNodeMarker) continue;
 
+                // Apply bidirectional filter
+                const configConnectionsBidirectionalOnly = getConfigConnectionsBidirectionalOnly();
+                if(configConnectionsBidirectionalOnly){
+                    const hasDirectionAB = connection.direction_ab && connection.direction_ab.avg_snr_db != null;
+                    const hasDirectionBA = connection.direction_ba && connection.direction_ba.avg_snr_db != null;
+                    if(!hasDirectionAB || !hasDirectionBA){
+                        continue;
+                    }
+                }
+
+                // Apply minimum SNR filter
+                const configConnectionsMinSnrDb = getConfigConnectionsMinSnrDb();
+                if(configConnectionsMinSnrDb != null){
+                    const snrAB = connection.direction_ab && connection.direction_ab.avg_snr_db != null ? connection.direction_ab.avg_snr_db : null;
+                    const snrBA = connection.direction_ba && connection.direction_ba.avg_snr_db != null ? connection.direction_ba.avg_snr_db : null;
+                    
+                    const configConnectionsBidirectionalMinSnr = getConfigConnectionsBidirectionalMinSnr();
+                    let hasSnrAboveThreshold;
+                    
+                    if(configConnectionsBidirectionalMinSnr){
+                        // Bidirectional mode: ALL existing directions must meet threshold
+                        const directionsToCheck = [];
+                        if(snrAB != null) directionsToCheck.push(snrAB);
+                        if(snrBA != null) directionsToCheck.push(snrBA);
+                        
+                        if(directionsToCheck.length === 0){
+                            // No SNR data in either direction, skip
+                            hasSnrAboveThreshold = false;
+                        } else {
+                            // All existing directions must be above threshold
+                            hasSnrAboveThreshold = directionsToCheck.every(snr => snr > configConnectionsMinSnrDb);
+                        }
+                    } else {
+                        // Default mode: EITHER direction has SNR above threshold
+                        hasSnrAboveThreshold = (snrAB != null && snrAB > configConnectionsMinSnrDb) || (snrBA != null && snrBA > configConnectionsMinSnrDb);
+                    }
+                    
+                    if(!hasSnrAboveThreshold){
+                        continue;
+                    }
+                }
+
                 // Calculate distance
                 const distanceInMeters = nodeMarker.getLatLng().distanceTo(otherNodeMarker.getLatLng()).toFixed(2);
                 const configConnectionsMaxDistanceInMeters = getConfigConnectionsMaxDistanceInMeters();
@@ -3609,6 +3733,48 @@
 
             if (!nodeA || !nodeB) {
                 continue;
+            }
+
+            // Apply bidirectional filter
+            const configConnectionsBidirectionalOnly = getConfigConnectionsBidirectionalOnly();
+            if(configConnectionsBidirectionalOnly){
+                const hasDirectionAB = connection.direction_ab && connection.direction_ab.avg_snr_db != null;
+                const hasDirectionBA = connection.direction_ba && connection.direction_ba.avg_snr_db != null;
+                if(!hasDirectionAB || !hasDirectionBA){
+                    continue;
+                }
+            }
+
+            // Apply minimum SNR filter
+            const configConnectionsMinSnrDb = getConfigConnectionsMinSnrDb();
+            if(configConnectionsMinSnrDb != null){
+                const snrAB = connection.direction_ab && connection.direction_ab.avg_snr_db != null ? connection.direction_ab.avg_snr_db : null;
+                const snrBA = connection.direction_ba && connection.direction_ba.avg_snr_db != null ? connection.direction_ba.avg_snr_db : null;
+                
+                const configConnectionsBidirectionalMinSnr = getConfigConnectionsBidirectionalMinSnr();
+                let hasSnrAboveThreshold;
+                
+                if(configConnectionsBidirectionalMinSnr){
+                    // Bidirectional mode: ALL existing directions must meet threshold
+                    const directionsToCheck = [];
+                    if(snrAB != null) directionsToCheck.push(snrAB);
+                    if(snrBA != null) directionsToCheck.push(snrBA);
+                    
+                    if(directionsToCheck.length === 0){
+                        // No SNR data in either direction, skip
+                        hasSnrAboveThreshold = false;
+                    } else {
+                        // All existing directions must be above threshold
+                        hasSnrAboveThreshold = directionsToCheck.every(snr => snr > configConnectionsMinSnrDb);
+                    }
+                } else {
+                    // Default mode: EITHER direction has SNR above threshold
+                    hasSnrAboveThreshold = (snrAB != null && snrAB > configConnectionsMinSnrDb) || (snrBA != null && snrBA > configConnectionsMinSnrDb);
+                }
+                
+                if(!hasSnrAboveThreshold){
+                    continue;
+                }
             }
 
             // Calculate distance between nodes
