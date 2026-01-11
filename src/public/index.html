@@ -2908,7 +2908,7 @@
         },
         "Overlays": {
             "Legend": legendLayerGroup,
-            "Backbone Connection": backboneConnectionsLayerGroup,
+            "Backbone Connections": backboneConnectionsLayerGroup,
             "Connections": connectionsLayerGroup,
             "Waypoints": waypointsLayerGroup,
             "Position History": nodePositionHistoryLayerGroup,
@@ -3822,7 +3822,7 @@
                 event.target.closeTooltip();
             });
 
-            // If both nodes are backbone nodes, also add to backbone layer group with arrows
+            // If both nodes are backbone nodes, also add to backbone layer group
             if (nodeA.is_backbone && nodeB.is_backbone) {
                 const backboneLine = L.polyline([
                     nodeAMarker.getLatLng(),
@@ -3831,13 +3831,6 @@
                     color: lineColor,
                     opacity: 0.75,
                     weight: 3,
-                }).arrowheads({
-                    size: '10px',
-                    fill: true,
-                    offsets: {
-                        start: '25px',
-                        end: '25px',
-                    },
                 }).addTo(backboneConnectionsLayerGroup);
 
                 backboneLine.bindTooltip(tooltip, {
