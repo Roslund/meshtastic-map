@@ -1,0 +1,39 @@
+{
+    "fork_info": "Forked by <a class=\"link\" target=\"_blank\" href=\"http://github.com/Roslund/\">Roslund</a>, augmented by dogvisor.",
+    "title": "STHLM-MESH MAP",
+    "home_url": "https://sthlm-mesh.se/",
+    "base_url": "https://map.sthlm-mesh.se/",
+    "announcement": {
+        "enabled": true,
+        "id": "1",
+        "header": "Viktigt!",
+        "content": "I Stockholm används LoRa preset <b>Medium Range - Fast</b>. För mer info <a href=\"https://sthlm-mesh.se/blog/2025/övergång-till-mediumfast-den-27-september/\" type=\"button\" class=\"link\">klicka här</a>."
+    },
+    "lat": 59.3,
+    "lng": 378.1,
+    "zoom": 10,
+    "description": "En interaktiv karta över Meshtastic-noder i STHLM-MESH.",
+    "info_blocks": [
+        {
+            "header": "Beskrivning",
+            "content": "Detta är en karta som enbart fokuserar på Stockholm. Den är baserad på Liam Cottle's open source projekt Meshtastic Map, men har flertalet ändringar och nya funktioner som gör att vi bättre kan analysera Meshen i Stockholm."
+        },
+        {
+            "header": "Frågor och svar",
+            "content": [
+                {
+                    "header": "Hur får jag min nod att synas på kartan?",
+                    "content": "Din nod behöver anting ha en GPS, ha en fast position inställd, eller att din telefon delar sin position. Utöver detta måste platsdelning vara påslåget under kanalinställningarna för MediumFast kanalen (vanligtvis kanal 0)."
+                },
+                {
+                    "header": "Min nod är på fel plats på kartan",
+                    "content": "Detta är troligtvis för att din nod inte delar <b>exakt position</b>. Som standard är positionsprecisionen inställd på ± 3 km, vilket betyder att noden kan befinna sig inom en cirkel med radien 3 kilometer. Du kan ändra positions precisionen i kanalinställningarna. För mer info om positions precisionen, klicka här."
+                },
+                {
+                    "header": "Hur kan jag ansluta min nod till MQTT servern?",
+                    "content": "Då vi enbart vill analysera Meshen i stockholm är MQTT servern inte öppen för alla. Endast ett fåtal noder är uppkopplade till MQTT för att kunna analysera trafiken som faktiskt går över LoRa. De noder som är kopplade mot MQTT servern bör: <ul class=\"list-disc list-inside\"><li>Vara på en unik geografisk plats, då vi vill se hur trafiken fördelas</li><li>Ha en stabil fast koppling till internet (via Ethernet eller WiFi)</li><li>Ha hög tillgänglighet</li><li>Ha direktkontakt med flertalet andra noder</li></ul>Tror du att din nod kan bidra, kontakta @Roslund på Discord."
+                }
+            ]
+        }
+    ]
+}

@@ -3,16 +3,16 @@
 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>STHLM-MESH MAP</title>
-    <meta name="title" content="Meshtastic Map">
-    <meta name="description" content="An interactive map of all Meshtastic nodes.">
+    <title><%= title %></title>
+    <meta name="title" content="<%= title %>">
+    <meta name="description" content="<%= description %>">
     <link rel="icon" type="image/png" href="/icon.png"/>
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://map.sthlm-mesh.se">
-    <meta property="og:title" content="STHLM-MESH MAP">
-    <meta property="og:description" content="An interactive map of all Meshtastic nodes.">
+    <meta property="og:url" content="<%= base_url %>">
+    <meta property="og:title" content="<%= title %>">
+    <meta property="og:description" content="<%= description %>">
 
     <!-- tailwind css -->
     <script src="assets/js/tailwindcss/tailwind-v3.4.3-forms-v0.5.7.js"></script>
@@ -173,9 +173,9 @@
 
                 <!-- info -->
                 <div class="my-auto leading-tight">
-                    <div class="font-bold">Viktigt!</div>
+                    <div class="font-bold"><%- announcement.header %></div>
                     <div class="text-sm">
-                        <span>I Stockholm används LoRa preset <b>Medium Range - Fast</b>. För mer info <a href="https://sthlm-mesh.se/blog/2025/övergång-till-mediumfast-den-27-september/" type="button" class="link">klicka här</a>.</span>
+                        <span><%- announcement.content %></span>
                     </div>
                 </div>
 
@@ -191,10 +191,9 @@
                 </div>
 
             </div>
-
+            
             <!-- header -->
             <div class="flex p-3 h-16" style="background-color: 30a552;">
-
                 <!-- close mobile search button -->
                 <div v-if="isShowingMobileSearch" class="my-auto">
                     <a @click="isShowingMobileSearch = false" href="javascript:void(0)" class="rounded-full">
@@ -213,7 +212,7 @@
 
                 <!-- app info -->
                 <div v-if="!isShowingMobileSearch" class="my-auto leading-tight">
-                    <a href="https://sthlm-mesh.se"><div class="font-bold" style="color: #ffffff; font-size: 1.25rem;">STHLM-MESH</div></a>
+                    <a href="<%= home_url %>"><div class="font-bold" style="color: #ffffff; font-size: 1.25rem;"><%= title %></div></a>
                 </div>
 
                 <!-- search bar -->
@@ -356,45 +355,26 @@
                                     <img src="./icon.png" class="mx-auto w-16 h-16 rounded mb-1"/>
                                     <h1 class="font-bold">Meshtastic Map</h1>
                                     <h2>Created by <a class="link" target="_blank" href="https://liamcottle.com">Liam Cottle</a></h2>
-                                    <h2>Forked by <a class="link" target="_blank" href="http://github.com/Roslund/">Roslund</a></h2>
+                                    <h2><%- fork_info %></h2>
                                 </div>
 
                                 <!-- Beskrivning -->
-                                <div>
-                                    <div class="font-bold mb-2">Beskrivning</div>
-                                    <div class="space-y-2">
-                                        <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div>Detta är en karta som enbart fokuserar på Stockholm.</div>
-                                            <div>Den är baserad på Liam Cottle's open source projekt Meshtastic Map, men har flertalet ändringar och nya funktioner som gör att vi bättre kan analysera Meshen i Stockholm.</div>
-                                        </div>
+                                <% info_blocks.forEach(function(info_block) { %>
+                                    <div>
+                                        <div class="font-bold mb-2"><%- info_block.header %></div>
+                                        <% if (typeof info_block.content == 'string') { info_block.content = [{content: info_block.content}]} %>
+                                        <% info_block.content.forEach(function(content_item) { %>
+                                            <div class="space-y-2">
+                                                <div class="bg-gray-100 rounded p-2 border border-gray-200">
+                                                    <% if (content_item.header) { %>
+                                                    <div class="font-semibold"><%- content_item.header %></div>
+                                                    <% } %>
+                                                    <div><%- content_item.content %></div>
+                                                </div>
+                                            </div>
+                                        <% }); %>
                                     </div>
-                                    <br>
-                                    <div class="font-bold mb-2">Frågor och svar</div>
-                                    <div class="space-y-2">
-                                        <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div class="font-semibold">Hur får jag min nod att synas på kartan?</div>
-                                            <div>Din nod behöver anting ha en GPS, ha en fast position inställd, eller att din telefon delar sin position.</div> 
-                                            <div>Utöver detta måste platsdelning vara påslåget under kanalinställningarna för MediumFast kanalen (vanligtvis kanal 0).</div>
-                                        </div>
-                                        <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div class="font-semibold">Min nod är på fel plats på kartan</div>
-                                            <div>Detta är troligtvis för att din nod inte delar <b>exakt position</b>. Som standard är positionsprecisionen inställd på &plusmn; 3 km, vilket betyder att noden kan befinna sig inom en cirkel med radien 3 kilometer.</div>
-                                            <div>Du kan ändra positions precisionen i kanalinställningarna. För mer info om positions precisionen, <a href="https://sthlm-mesh.se/docs/position/#position-precision">klicka här</a>.</div>
-                                        </div>
-                                        <div class="bg-gray-100 rounded p-2 border border-gray-200">
-                                            <div class="font-semibold">Hur kan jag ansluta min nod till MQTT servern?</div>
-                                            <div>Då vi enbart vill analysera Meshen i stockholm är MQTT servern inte öppen för alla. Endast ett fåtal noder är uppkopplade till MQTT för att kunna analysera trafiken som faktiskt går över LoRa.</div>
-                                            <div>De noder som är kopplade mot MQTT servern bör:</div> 
-                                            <ul class="list-disc list-inside">
-                                                <li>Vara på en unik geografisk plats, då vi vill se hur trafiken fördelas</li>
-                                                <li>Ha en stabil fast koppling till internet (via Ethernet eller WiFi)</li>
-                                                <li>Ha hög tillgänglighet</li>
-                                                <li>Ha direktkontakt med flertalet andra noder</li>
-                                            </ul>
-                                            <div>Tror du att din nod kan bidra, kontakta @Roslund på Discord.</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <% }); %>
                                 <!-- legal -->
                                 <div>
                                     <div class="font-bold mb-2">Legal</div>
@@ -1874,11 +1854,15 @@
         methods: {
             getAnnouncementId: function() {
                 // change this when making a new announcement
-                return "1";
+                return "<%= announcement.id %>";
             },
             shouldShowAnnouncement: function() {
                 const lastSeenAnnouncementId = window.localStorage.getItem("last-seen-announcement-id");
-                return lastSeenAnnouncementId?.toString() !== this.getAnnouncementId();
+                <% if (announcement.enabled) { %>
+                  return lastSeenAnnouncementId?.toString() !== this.getAnnouncementId();
+                <% } else { %>     
+                  return false;
+                <% } %>
             },
             dismissAnnouncement: function() {
                 window.localStorage.setItem("last-seen-announcement-id", this.getAnnouncementId());
@@ -2752,13 +2736,16 @@
         [100, 500], // bottom right
     ];
 
-    // create map positioned over Stockholm
+    // create map positioned according to content.json
     var map = L.map('map', {
         maxBounds: bounds,
-    }).setView([
-        59.3,
-        378.1,
-    ], 10);
+    }).setView(
+        [
+            <%= lat %>,
+            <%= lng %>,
+        ],
+        <%= zoom %>
+    );
 
     // remove leaflet link
     map.attributionControl.setPrefix('');

@@ -29,6 +29,8 @@ services:
     environment:
       DATABASE_URL: "mysql://root:password@database:3306/meshtastic-map?connection_limit=100"
       MAP_OPTS: "" # add any custom index.js options here
+    volumes:
+      - content.json:/app/src/content.json:ro
 
   # publishes mqtt packets via websocket
   meshtastic-ws:
