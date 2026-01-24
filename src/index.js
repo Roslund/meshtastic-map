@@ -13,6 +13,9 @@ const statsRoutes = require('./stats.js');
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+// Load content
+const content = require('./content.json');
+
 // return big ints as string when using JSON.stringify
 BigInt.prototype.toJSON = function() {
     return this.toString();
@@ -77,6 +80,10 @@ function formatNodeInfo(node) {
 
 const app = express();
 
+// set view engine to ejs
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // enable compression
 app.use(compression());
 
@@ -87,7 +94,7 @@ app.use('/api', cors());
 app.use('/', express.static(path.join(__dirname, 'public')));
 
 app.get('/', async (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/index.html'));
+    res.render('index', content);
 });
 
 // stats API in separate file
