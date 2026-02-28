@@ -547,10 +547,22 @@ app.get('/api/v1/nodes/:nodeId/traceroutes', async (req, res) => {
             return;
         }
 
-        // get latest traceroutes
+        // get latest traceroutes, deduplicated by packet_id
         // We want replies where want_response is false and it will be "to" the
         // requester.
-        const traceroutes = await prisma.$queryRaw`SELECT * FROM traceroutes WHERE want_response = false and \`to\` = ${node.node_id} and gateway_id is not null order by id desc limit ${count}`;
+        // Deduplicate by packet_id, keeping the latest traceroute (highest id) for each packet_id
+        const traceroutes = await prisma.$queryRaw`
+            SELECT t1.* 
+            FROM traceroutes t1
+            INNER JOIN (
+                SELECT packet_id, MAX(id) as max_id
+                FROM traceroutes
+                WHERE want_response = false and \`to\` = ${node.node_id} and gateway_id is not null
+                GROUP BY packet_id
+            ) t2 ON t1.packet_id = t2.packet_id AND t1.id = t2.max_id
+            ORDER BY t1.id DESC
+            LIMIT ${count}
+        `;
 
         res.json({
             traceroutes: traceroutes.map((trace) => {
