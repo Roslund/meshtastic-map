@@ -11,7 +11,7 @@
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "command-line-args": "^6.0.1",
-    "command-line-usage": "^7.0.3",
+    "command-line-usage": "^7.0.4",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
