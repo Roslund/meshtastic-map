@@ -3224,7 +3224,7 @@
 
     }
 
-    function getTerrainProfileImage(node1, node2) {
+    function getTerrainProfileImage(url,node1, node2) {
 
         // line colour between nodes
         const lineColour = "0000FF"; // blue
@@ -3242,7 +3242,7 @@
         const node2ElevationMSL = node2.altitude ?? "";
 
         // generate terrain profile image url
-        return "https://heywhatsthat.com/bin/profile-0904.cgi?" + new URLSearchParams({
+        return url + new URLSearchParams({
             src: "meshtastic.liamcottle.net",
             axes: 1, // include grid lines and a scale
             metric: 1, // show metric units
@@ -3706,9 +3706,13 @@
         }
 
         // Add terrain profile image
-        const terrainImageUrl = getTerrainProfileImage(nodeA, nodeB);
-        tooltip += `<br/><br/>Terrain images from <a href="http://www.heywhatsthat.com" target="_blank">HeyWhatsThat.com</a>`;
+        const terrainImageUrl = getTerrainProfileImage("https://heywhatsthat.com/bin/profile-0904.cgi?", nodeA, nodeB);
+        tooltip += `<br/><br/>Terrain image from <a href="http://www.heywhatsthat.com" target="_blank">HeyWhatsThat.com</a>`;
         tooltip += `<br/><a href="${terrainImageUrl}" target="_blank"><img src="${terrainImageUrl}" width="100%"></a>`;
+        
+        const terrainImageUrl2 = getTerrainProfileImage("https://tjenavadärdetdär.se/?", nodeA, nodeB);
+        tooltip += `<br/>Terrain image from <a href="https://tjenavadärdetdär.se" target="_blank">TjenaVadÄrDetDär.se</a>`;
+        tooltip += `<br/><a href="${terrainImageUrl2}" target="_blank"><img src="${terrainImageUrl2}" width="100%"></a>`;
 
         return tooltip;
     }
