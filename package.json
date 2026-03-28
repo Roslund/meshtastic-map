@@ -16,7 +16,7 @@
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "mqtt": "^5.14.1",
-    "protobufjs": "^7.5.4",
+    "protobufjs": "^8.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
